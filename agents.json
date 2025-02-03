@@ -1,0 +1,98 @@
+{
+  "mainTask": "Write an article on benefits of meditation",
+  "agents": [
+    {
+      "agentId": 1,
+      "agentName": "Agent for Research the benefits of meditation (stress reduction, improved focus, emotional regulation, etc.)",
+      "taskAssigned": "Research the benefits of meditation (stress reduction, improved focus, emotional regulation, etc.)",
+      "dependencies": [],
+      "parallelGroup": 1
+    },
+    {
+      "agentId": 2,
+      "agentName": "Agent for Research different types of meditation techniques (mindfulness, transcendental, etc.)",
+      "taskAssigned": "Research different types of meditation techniques (mindfulness, transcendental, etc.)",
+      "dependencies": [],
+      "parallelGroup": 1
+    },
+    {
+      "agentId": 3,
+      "agentName": "Agent for Create an outline for the article (introduction, types of meditation, benefits, how to start, conclusion)",
+      "taskAssigned": "Create an outline for the article (introduction, types of meditation, benefits, how to start, conclusion)",
+      "dependencies": [
+        1,
+        2
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "agentId": 4,
+      "agentName": "Agent for Write the introduction to the article",
+      "taskAssigned": "Write the introduction to the article",
+      "dependencies": [
+        3
+      ],
+      "parallelGroup": 3
+    },
+    {
+      "agentId": 5,
+      "agentName": "Agent for Write the body paragraphs detailing different types of meditation and their benefits",
+      "taskAssigned": "Write the body paragraphs detailing different types of meditation and their benefits",
+      "dependencies": [
+        3,
+        1,
+        2
+      ],
+      "parallelGroup": 3
+    },
+    {
+      "agentId": 6,
+      "agentName": "Agent for Write a section on how to start meditating (finding a quiet space, setting intentions, etc.)",
+      "taskAssigned": "Write a section on how to start meditating (finding a quiet space, setting intentions, etc.)",
+      "dependencies": [
+        3
+      ],
+      "parallelGroup": 3
+    },
+    {
+      "agentId": 7,
+      "agentName": "Agent for Write the conclusion summarizing the benefits and encouraging readers to try meditation",
+      "taskAssigned": "Write the conclusion summarizing the benefits and encouraging readers to try meditation",
+      "dependencies": [
+        3,
+        5,
+        6
+      ],
+      "parallelGroup": 4
+    },
+    {
+      "agentId": 8,
+      "agentName": "Agent for Edit and proofread the article for grammar, clarity, and flow",
+      "taskAssigned": "Edit and proofread the article for grammar, clarity, and flow",
+      "dependencies": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "parallelGroup": 5
+    },
+    {
+      "agentId": 9,
+      "agentName": "Agent for Find relevant images or illustrations to include in the article (optional)",
+      "taskAssigned": "Find relevant images or illustrations to include in the article (optional)",
+      "dependencies": [],
+      "parallelGroup": 1
+    },
+    {
+      "agentId": 10,
+      "agentName": "Agent for Format the article for publication (add headings, subheadings, images)",
+      "taskAssigned": "Format the article for publication (add headings, subheadings, images)",
+      "dependencies": [
+        8,
+        9
+      ],
+      "parallelGroup": 5
+    }
+  ]
+}

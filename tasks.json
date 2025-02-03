@@ -9,15 +9,13 @@
     },
     {
       "subtaskId": 2,
-      "subtaskName": "Find supporting evidence and credible sources (studies, expert opinions)",
-      "dependencies": [
-        1
-      ],
+      "subtaskName": "Research different types of meditation techniques (mindfulness, transcendental, etc.)",
+      "dependencies": [],
       "parallelGroup": 1
     },
     {
       "subtaskId": 3,
-      "subtaskName": "Outline the article structure (introduction, body paragraphs, conclusion)",
+      "subtaskName": "Create an outline for the article (introduction, types of meditation, benefits, how to start, conclusion)",
       "dependencies": [
         1,
         2
@@ -26,15 +24,15 @@
     },
     {
       "subtaskId": 4,
-      "subtaskName": "Write the introduction (hook, background, thesis statement)",
+      "subtaskName": "Write the introduction to the article",
       "dependencies": [
         3
       ],
-      "parallelGroup": 2
+      "parallelGroup": 3
     },
     {
       "subtaskId": 5,
-      "subtaskName": "Write body paragraphs (each focusing on a specific benefit, with evidence)",
+      "subtaskName": "Write the body paragraphs detailing different types of meditation and their benefits",
       "dependencies": [
         3,
         1,
@@ -44,17 +42,17 @@
     },
     {
       "subtaskId": 6,
-      "subtaskName": "Write the conclusion (summarize benefits, call to action)",
+      "subtaskName": "Write a section on how to start meditating (finding a quiet space, setting intentions, etc.)",
       "dependencies": [
-        5
+        3
       ],
-      "parallelGroup": 2
+      "parallelGroup": 3
     },
     {
       "subtaskId": 7,
-      "subtaskName": "Edit and proofread the article for clarity, grammar, and style",
+      "subtaskName": "Write the conclusion summarizing the benefits and encouraging readers to try meditation",
       "dependencies": [
-        4,
+        3,
         5,
         6
       ],
@@ -62,19 +60,29 @@
     },
     {
       "subtaskId": 8,
-      "subtaskName": "Format the article for publication (headings, subheadings, images/illustrations)",
+      "subtaskName": "Edit and proofread the article for grammar, clarity, and flow",
       "dependencies": [
+        4,
+        5,
+        6,
         7
       ],
-      "parallelGroup": 4
+      "parallelGroup": 5
     },
     {
       "subtaskId": 9,
-      "subtaskName": "Choose relevant keywords and meta description for SEO",
+      "subtaskName": "Find relevant images or illustrations to include in the article (optional)",
+      "dependencies": [],
+      "parallelGroup": 1
+    },
+    {
+      "subtaskId": 10,
+      "subtaskName": "Format the article for publication (add headings, subheadings, images)",
       "dependencies": [
-        8
+        8,
+        9
       ],
-      "parallelGroup": 4
+      "parallelGroup": 5
     }
   ]
 }

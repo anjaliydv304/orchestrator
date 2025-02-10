@@ -1,0 +1,55 @@
+{
+  "mainTask": "Write an article on benefits of meditation",
+  "results": {
+    "1": {
+      "agentId": 1,
+      "agentName": "Agent for Research the benefits of meditation (stress reduction, improved focus, emotional regulation, etc.)",
+      "result": "Completed task: Research the benefits of meditation (stress reduction, improved focus, emotional regulation, etc.)"
+    },
+    "2": {
+      "agentId": 2,
+      "agentName": "Agent for Research different types of meditation techniques (mindfulness, transcendental, etc.)",
+      "result": "Completed task: Research different types of meditation techniques (mindfulness, transcendental, etc.)"
+    },
+    "3": {
+      "agentId": 3,
+      "agentName": "Agent for Create an outline for the article (introduction, types of meditation, benefits, how to start, conclusion)",
+      "result": "Completed task: Create an outline for the article (introduction, types of meditation, benefits, how to start, conclusion)"
+    },
+    "4": {
+      "agentId": 4,
+      "agentName": "Agent for Write the introduction to the article",
+      "result": "Completed task: Write the introduction to the article"
+    },
+    "5": {
+      "agentId": 5,
+      "agentName": "Agent for Write the body paragraphs detailing different types of meditation and their benefits",
+      "result": "Completed task: Write the body paragraphs detailing different types of meditation and their benefits"
+    },
+    "6": {
+      "agentId": 6,
+      "agentName": "Agent for Write a section on how to start meditating (finding a quiet space, setting intentions, etc.)",
+      "result": "Completed task: Write a section on how to start meditating (finding a quiet space, setting intentions, etc.)"
+    },
+    "7": {
+      "agentId": 7,
+      "agentName": "Agent for Write the conclusion summarizing the benefits and encouraging readers to try meditation",
+      "result": "Completed task: Write the conclusion summarizing the benefits and encouraging readers to try meditation"
+    },
+    "8": {
+      "agentId": 8,
+      "agentName": "Agent for Edit and proofread the article for grammar, clarity, and flow",
+      "result": "Completed task: Edit and proofread the article for grammar, clarity, and flow"
+    },
+    "9": {
+      "agentId": 9,
+      "agentName": "Agent for Find relevant images or illustrations to include in the article (optional)",
+      "result": "Completed task: Find relevant images or illustrations to include in the article (optional)"
+    },
+    "10": {
+      "agentId": 10,
+      "agentName": "Agent for Format the article for publication (add headings, subheadings, images)",
+      "result": "Completed task: Format the article for publication (add headings, subheadings, images)"
+    }
+  }
+}

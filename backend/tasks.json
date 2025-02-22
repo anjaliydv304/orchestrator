@@ -1,0 +1,75 @@
+{
+  "mainTask": "Write an article about the benefits of travelling",
+  "subtasks": [
+    {
+      "subtaskId": 1,
+      "subtaskName": "Brainstorm and list potential benefits of travelling",
+      "dependencies": [],
+      "parallelGroup": 1
+    },
+    {
+      "subtaskId": 2,
+      "subtaskName": "Research the chosen benefits in detail (e.g., stress reduction, personal growth, cultural understanding)",
+      "dependencies": [
+        1
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "subtaskId": 3,
+      "subtaskName": "Find supporting evidence and statistics for each benefit (e.g., studies, articles, travel blogs)",
+      "dependencies": [
+        2
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "subtaskId": 4,
+      "subtaskName": "Create an outline for the article, structuring the benefits logically",
+      "dependencies": [
+        3
+      ],
+      "parallelGroup": 3
+    },
+    {
+      "subtaskId": 5,
+      "subtaskName": "Write the introduction to the article",
+      "dependencies": [
+        4
+      ],
+      "parallelGroup": 4
+    },
+    {
+      "subtaskId": 6,
+      "subtaskName": "Write the body paragraphs, each focusing on a specific benefit with supporting evidence",
+      "dependencies": [
+        4
+      ],
+      "parallelGroup": 4
+    },
+    {
+      "subtaskId": 7,
+      "subtaskName": "Write the conclusion summarizing the key benefits of travelling",
+      "dependencies": [
+        6
+      ],
+      "parallelGroup": 5
+    },
+    {
+      "subtaskId": 8,
+      "subtaskName": "Edit and proofread the article for grammar, spelling, and clarity",
+      "dependencies": [
+        7
+      ],
+      "parallelGroup": 6
+    },
+    {
+      "subtaskId": 9,
+      "subtaskName": "Format the article for readability (headings, subheadings, images, etc.)",
+      "dependencies": [
+        8
+      ],
+      "parallelGroup": 6
+    }
+  ]
+}

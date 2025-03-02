@@ -1,59 +1,60 @@
 {
-  "mainTask": "Write an article about the benefits of travelling",
+  "mainTask": "Write an article about the benefits of meditation",
   "subtasks": [
     {
       "subtaskId": 1,
-      "subtaskName": "Brainstorm and list potential benefits of travelling",
+      "subtaskName": "Research the scientific benefits of meditation (stress reduction, improved focus, etc.)",
       "dependencies": [],
       "parallelGroup": 1
     },
     {
       "subtaskId": 2,
-      "subtaskName": "Research the chosen benefits in detail (e.g., stress reduction, personal growth, cultural understanding)",
-      "dependencies": [
-        1
-      ],
-      "parallelGroup": 2
+      "subtaskName": "Research different types of meditation (mindfulness, transcendental, etc.) and their specific benefits",
+      "dependencies": [],
+      "parallelGroup": 1
     },
     {
       "subtaskId": 3,
-      "subtaskName": "Find supporting evidence and statistics for each benefit (e.g., studies, articles, travel blogs)",
+      "subtaskName": "Research anecdotal evidence and personal experiences with meditation benefits",
+      "dependencies": [],
+      "parallelGroup": 1
+    },
+    {
+      "subtaskId": 4,
+      "subtaskName": "Create an outline for the article, including introduction, body paragraphs (each focusing on a specific benefit), and conclusion",
       "dependencies": [
-        2
+        1,
+        2,
+        3
       ],
       "parallelGroup": 2
     },
     {
-      "subtaskId": 4,
-      "subtaskName": "Create an outline for the article, structuring the benefits logically",
+      "subtaskId": 5,
+      "subtaskName": "Write the introduction, explaining what meditation is and its potential benefits",
       "dependencies": [
+        4
+      ],
+      "parallelGroup": 3
+    },
+    {
+      "subtaskId": 6,
+      "subtaskName": "Write body paragraphs, each focusing on a specific benefit (e.g., stress reduction, improved sleep, increased self-awareness)",
+      "dependencies": [
+        4,
+        1,
+        2,
         3
       ],
       "parallelGroup": 3
     },
     {
-      "subtaskId": 5,
-      "subtaskName": "Write the introduction to the article",
-      "dependencies": [
-        4
-      ],
-      "parallelGroup": 4
-    },
-    {
-      "subtaskId": 6,
-      "subtaskName": "Write the body paragraphs, each focusing on a specific benefit with supporting evidence",
-      "dependencies": [
-        4
-      ],
-      "parallelGroup": 4
-    },
-    {
       "subtaskId": 7,
-      "subtaskName": "Write the conclusion summarizing the key benefits of travelling",
+      "subtaskName": "Write the conclusion, summarizing the key benefits and encouraging readers to try meditation",
       "dependencies": [
         6
       ],
-      "parallelGroup": 5
+      "parallelGroup": 4
     },
     {
       "subtaskId": 8,
@@ -61,15 +62,15 @@
       "dependencies": [
         7
       ],
-      "parallelGroup": 6
+      "parallelGroup": 4
     },
     {
       "subtaskId": 9,
-      "subtaskName": "Format the article for readability (headings, subheadings, images, etc.)",
+      "subtaskName": "Format the article for publication (add headings, subheadings, images, etc.)",
       "dependencies": [
         8
       ],
-      "parallelGroup": 6
+      "parallelGroup": 4
     }
   ]
 }

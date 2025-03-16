@@ -6,12 +6,8 @@ import path from "node:path";
 import fs from "node:fs";
 import { decomposeTask, saveJsonToFile } from "./taskDecomposer.js";
 import { executeWorkflow } from "./workflowEngine.js";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -47,21 +43,20 @@ function broadcastUpdate() {
   clients.forEach((client) => client.res.write(data));
 }
 
-
 function generateAgentsFromDecomposition(decomposition) {
   if (!decomposition.subtasks || !Array.isArray(decomposition.subtasks)) {
     throw new Error("Invalid decomposition format: 'subtasks' missing.");
   }
-  const agents = decomposition.subtasks.map(subtask => ({
+  const agents = decomposition.subtasks.map((subtask) => ({
     agentId: subtask.subtaskId,
     agentName: `Agent for ${subtask.subtaskName}`,
     taskAssigned: subtask.subtaskName,
     dependencies: subtask.dependencies,
-    parallelGroup: subtask.parallelGroup
+    parallelGroup: subtask.parallelGroup,
   }));
   return {
     mainTask: decomposition.mainTask,
-    agents: agents
+    agents: agents,
   };
 }
 
@@ -69,10 +64,10 @@ class Task {
   constructor(description, priority = "medium", dueDate = null) {
     this.taskId = uuidv4();
     this.description = description;
-    this.status = "pending"; 
+    this.status = "pending";
     this.priority = priority;
     this.dueDate = dueDate;
-    this.result = null; 
+    this.result = null;
   }
 }
 
@@ -120,11 +115,13 @@ app.post("/tasks", async (req, res) => {
   }
   const newTask = new Task(description, priority, dueDate);
   tasks.push(newTask);
-  
+
   res.status(201).json(newTask);
 
   processTask(newTask).then((updatedTask) => {
-    console.log(`Orchestration complete for task ${updatedTask.taskId}: ${updatedTask.status}`);
+    console.log(
+      `Orchestration complete for task ${updatedTask.taskId}: ${updatedTask.status}`
+    );
   });
   broadcastUpdate();
 });
@@ -133,9 +130,28 @@ app.get("/tasks", (req, res) => {
   res.json(tasks);
 });
 
+// Add the missing GET task by ID route
+app.get("/tasks/:taskId", (req, res) => {
+  const { taskId } = req.params;
+  const task = tasks.find((t) => t.taskId === taskId);
+  
+  if (!task) {
+    return res.status(404).json({ error: "Task not found" });
+  }
+  
+  res.json(task);
+});
+
 app.put("/tasks/:taskId/status", (req, res) => {
   const { taskId } = req.params;
   const { status } = req.body;
+  
+  // Add validation
+  const validStatuses = ["pending", "in-progress", "completed", "error"];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ error: "Invalid status value" });
+  }
+  
   const task = tasks.find((t) => t.taskId === taskId);
   if (!task) {
     return res.status(404).json({ error: "Task not found" });
@@ -148,6 +164,13 @@ app.put("/tasks/:taskId/status", (req, res) => {
 app.put("/tasks/:taskId/priority", (req, res) => {
   const { taskId } = req.params;
   const { priority } = req.body;
+  
+  // Add validation
+  const validPriorities = ["low", "medium", "high", "critical"];
+  if (!validPriorities.includes(priority)) {
+    return res.status(400).json({ error: "Invalid priority value" });
+  }
+  
   const task = tasks.find((t) => t.taskId === taskId);
   if (!task) {
     return res.status(404).json({ error: "Task not found" });
@@ -168,6 +191,11 @@ app.delete("/tasks/:taskId", (req, res) => {
   res.json({ message: "Task deleted successfully" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Orchestrator running on http://localhost:${PORT}`);
+const server = app.listen(process.env.NODE_ENV === 'test' ? 0 : PORT, () => {
+  if (process.env.NODE_ENV !== 'test') {
+    console.log(`Orchestrator running on http://localhost:${PORT}`);
+  }
 });
+export default app;
+export { server };
+export { processTask, Task };

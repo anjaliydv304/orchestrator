@@ -24,12 +24,16 @@ export default function generateAgentsFromTasks(taskFilePath, agentFilePath) {
 
     fs.writeFileSync(agentFilePath, JSON.stringify(agentData, null, 2), 'utf-8');
     console.log(`Agents JSON saved successfully to ${agentFilePath}`);
+    
+    return agentData;
   } catch (error) {
     console.error("Error generating agents:", error.message);
+    throw error;
   }
 }
 
-// Main execution
-const taskFilePath = path.join(process.cwd(), 'tasks.json');
-const agentFilePath = path.join(process.cwd(), 'agents.json');
-generateAgentsFromTasks(taskFilePath, agentFilePath);
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const taskFilePath = path.join(process.cwd(), 'tasks.json');
+  const agentFilePath = path.join(process.cwd(), 'agents.json');
+  generateAgentsFromTasks(taskFilePath, agentFilePath);
+}

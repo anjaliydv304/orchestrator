@@ -1,13 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import * as fs from 'node:fs';
+import * as fs from "node:fs";
 import dotenv from "dotenv";
-import * as path from 'node:path';
-import { fileURLToPath } from 'url';
+import * as path from "node:path";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -23,7 +19,7 @@ const model = genAI.getGenerativeModel({
     - "parallelGroup": A group number indicating which tasks can be done in parallel.
 
     Ensure the response is raw JSON, with no extra text, explanations, or formatting.
-
+    
     Example output:
     {
       "mainTask": "Task description",
@@ -44,17 +40,28 @@ const model = genAI.getGenerativeModel({
     }`
 });
 
-
 function cleanJsonResponse(responseText) {
   try {
-    const cleanText = responseText.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleanText);
+    return JSON.parse(responseText);
   } catch (error) {
-    console.error("Error parsing AI response:", error.message);
-    throw new Error("Received invalid JSON from AI.");
+    try {
+      const cleanText = responseText.replace(/```json|```/g, "").trim();
+      return JSON.parse(cleanText);
+    } catch (secondError) {
+      try {
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+        throw new Error("Could not extract JSON from response");
+      } catch (thirdError) {
+        console.error("Error parsing AI response:", error.message);
+        console.error("Raw response:", responseText);
+        throw new Error("Received invalid JSON from AI.");
+      }
+    }
   }
 }
-
 
 export async function decomposeTask(mainTask) {
   const prompt = `Decompose the task: ${mainTask}`;
@@ -62,8 +69,12 @@ export async function decomposeTask(mainTask) {
   try {
     const result = await model.generateContent(prompt);
     const rawResponse = result.response.text();
+
     return cleanJsonResponse(rawResponse);
   } catch (error) {
+    if (error.message === "Received invalid JSON from AI.") {
+      throw error;
+    }
     console.error("Error during task decomposition:", error.message);
     throw new Error("Failed to decompose the task.");
   }
@@ -78,16 +89,17 @@ export function saveJsonToFile(jsonData, filePath) {
   }
 }
 
-// Main 
-(async () => {
-  const mainTask = "Write an article on benefits of meditation";
+if (import.meta.url === `file://${process.argv[1]}`) {
+  (async () => {
+    const mainTask = "Write an article on benefits of meditation";
 
-  try {
-    const taskDecomposition = await decomposeTask(mainTask);
-    const filePath = path.join(process.cwd(), 'tasks.json');
+    try {
+      const taskDecomposition = await decomposeTask(mainTask);
+      const filePath = path.join(process.cwd(), "tasks.json");
 
-    saveJsonToFile(taskDecomposition, filePath);
-  } catch (error) {
-    console.error("An error occurred:", error.message);
-  }
-})();
+      saveJsonToFile(taskDecomposition, filePath);
+    } catch (error) {
+      console.error("An error occurred:", error.message);
+    }
+  })();
+}

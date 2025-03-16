@@ -2,12 +2,9 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as fs from "node:fs";
 import dotenv from "dotenv";
 import * as path from "node:path";
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 

@@ -1,0 +1,90 @@
+{
+  "mainTask": "Write an article on benefits of meditation",
+  "subtasks": [
+    {
+      "subtaskId": 1,
+      "subtaskName": "Research the benefits of meditation (physical, mental, emotional)",
+      "dependencies": [],
+      "parallelGroup": 1
+    },
+    {
+      "subtaskId": 2,
+      "subtaskName": "Find supporting evidence and credible sources",
+      "dependencies": [
+        1
+      ],
+      "parallelGroup": 1
+    },
+    {
+      "subtaskId": 3,
+      "subtaskName": "Outline the article structure (introduction, body paragraphs, conclusion)",
+      "dependencies": [
+        1,
+        2
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "subtaskId": 4,
+      "subtaskName": "Write the introduction (hook, background, thesis statement)",
+      "dependencies": [
+        3
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "subtaskId": 5,
+      "subtaskName": "Write body paragraphs (each focusing on a specific benefit, with evidence)",
+      "dependencies": [
+        3,
+        1,
+        2
+      ],
+      "parallelGroup": 3
+    },
+    {
+      "subtaskId": 6,
+      "subtaskName": "Write the conclusion (summary of benefits, call to action)",
+      "dependencies": [
+        5
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "subtaskId": 7,
+      "subtaskName": "Edit and proofread the article for grammar, spelling, and clarity",
+      "dependencies": [
+        4,
+        5,
+        6
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "subtaskId": 8,
+      "subtaskName": "Create a compelling title and meta description",
+      "dependencies": [
+        7
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "subtaskId": 9,
+      "subtaskName": "Format the article for readability (headings, subheadings, bullet points)",
+      "dependencies": [
+        7
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "subtaskId": 10,
+      "subtaskName": "Review and finalize the article",
+      "dependencies": [
+        7,
+        8,
+        9
+      ],
+      "parallelGroup": 2
+    }
+  ]
+}

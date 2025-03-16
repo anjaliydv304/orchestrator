@@ -1,0 +1,100 @@
+{
+  "mainTask": "Write an article on benefits of meditation",
+  "agents": [
+    {
+      "agentId": 1,
+      "agentName": "Agent for Research the benefits of meditation (physical, mental, emotional)",
+      "taskAssigned": "Research the benefits of meditation (physical, mental, emotional)",
+      "dependencies": [],
+      "parallelGroup": 1
+    },
+    {
+      "agentId": 2,
+      "agentName": "Agent for Find supporting evidence and credible sources",
+      "taskAssigned": "Find supporting evidence and credible sources",
+      "dependencies": [
+        1
+      ],
+      "parallelGroup": 1
+    },
+    {
+      "agentId": 3,
+      "agentName": "Agent for Outline the article structure (introduction, body paragraphs, conclusion)",
+      "taskAssigned": "Outline the article structure (introduction, body paragraphs, conclusion)",
+      "dependencies": [
+        1,
+        2
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "agentId": 4,
+      "agentName": "Agent for Write the introduction (hook, background, thesis statement)",
+      "taskAssigned": "Write the introduction (hook, background, thesis statement)",
+      "dependencies": [
+        3
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "agentId": 5,
+      "agentName": "Agent for Write body paragraphs (each focusing on a specific benefit, with evidence)",
+      "taskAssigned": "Write body paragraphs (each focusing on a specific benefit, with evidence)",
+      "dependencies": [
+        3,
+        1,
+        2
+      ],
+      "parallelGroup": 3
+    },
+    {
+      "agentId": 6,
+      "agentName": "Agent for Write the conclusion (summary of benefits, call to action)",
+      "taskAssigned": "Write the conclusion (summary of benefits, call to action)",
+      "dependencies": [
+        5
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "agentId": 7,
+      "agentName": "Agent for Edit and proofread the article for grammar, spelling, and clarity",
+      "taskAssigned": "Edit and proofread the article for grammar, spelling, and clarity",
+      "dependencies": [
+        4,
+        5,
+        6
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "agentId": 8,
+      "agentName": "Agent for Create a compelling title and meta description",
+      "taskAssigned": "Create a compelling title and meta description",
+      "dependencies": [
+        7
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "agentId": 9,
+      "agentName": "Agent for Format the article for readability (headings, subheadings, bullet points)",
+      "taskAssigned": "Format the article for readability (headings, subheadings, bullet points)",
+      "dependencies": [
+        7
+      ],
+      "parallelGroup": 2
+    },
+    {
+      "agentId": 10,
+      "agentName": "Agent for Review and finalize the article",
+      "taskAssigned": "Review and finalize the article",
+      "dependencies": [
+        7,
+        8,
+        9
+      ],
+      "parallelGroup": 2
+    }
+  ]
+}

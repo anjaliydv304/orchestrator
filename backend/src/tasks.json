@@ -3,13 +3,13 @@
   "subtasks": [
     {
       "subtaskId": 1,
-      "subtaskName": "Research the benefits of meditation (physical, mental, emotional)",
+      "subtaskName": "Research the benefits of meditation (stress reduction, improved focus, emotional regulation, etc.)",
       "dependencies": [],
       "parallelGroup": 1
     },
     {
       "subtaskId": 2,
-      "subtaskName": "Find supporting evidence and credible sources",
+      "subtaskName": "Find supporting evidence and credible sources (studies, expert opinions, etc.)",
       "dependencies": [
         1
       ],
@@ -17,7 +17,7 @@
     },
     {
       "subtaskId": 3,
-      "subtaskName": "Outline the article structure (introduction, body paragraphs, conclusion)",
+      "subtaskName": "Create an outline for the article (introduction, body paragraphs, conclusion)",
       "dependencies": [
         1,
         2
@@ -26,65 +26,52 @@
     },
     {
       "subtaskId": 4,
-      "subtaskName": "Write the introduction (hook, background, thesis statement)",
+      "subtaskName": "Write the introduction (hook, background information, thesis statement)",
       "dependencies": [
         3
       ],
-      "parallelGroup": 2
+      "parallelGroup": 3
     },
     {
       "subtaskId": 5,
-      "subtaskName": "Write body paragraphs (each focusing on a specific benefit, with evidence)",
+      "subtaskName": "Write body paragraphs (each focusing on a specific benefit, with supporting evidence)",
       "dependencies": [
         3,
-        1,
         2
       ],
       "parallelGroup": 3
     },
     {
       "subtaskId": 6,
-      "subtaskName": "Write the conclusion (summary of benefits, call to action)",
+      "subtaskName": "Write the conclusion (summarize main points, restate thesis, call to action)",
       "dependencies": [
         5
       ],
-      "parallelGroup": 2
+      "parallelGroup": 4
     },
     {
       "subtaskId": 7,
       "subtaskName": "Edit and proofread the article for grammar, spelling, and clarity",
       "dependencies": [
         4,
-        5,
         6
       ],
-      "parallelGroup": 2
+      "parallelGroup": 4
     },
     {
       "subtaskId": 8,
-      "subtaskName": "Create a compelling title and meta description",
-      "dependencies": [
-        7
-      ],
-      "parallelGroup": 2
+      "subtaskName": "Choose relevant images or illustrations (optional)",
+      "dependencies": [],
+      "parallelGroup": 1
     },
     {
       "subtaskId": 9,
-      "subtaskName": "Format the article for readability (headings, subheadings, bullet points)",
-      "dependencies": [
-        7
-      ],
-      "parallelGroup": 2
-    },
-    {
-      "subtaskId": 10,
-      "subtaskName": "Review and finalize the article",
+      "subtaskName": "Format the article for publication (headings, subheadings, citations)",
       "dependencies": [
         7,
-        8,
-        9
+        8
       ],
-      "parallelGroup": 2
+      "parallelGroup": 4
     }
   ]
 }

@@ -16,6 +16,7 @@ app.use(express.json());
 app.use(cors());
 
 let tasks = [];
+let agentStatus = {}; // Track agent status for each task
 
 let clients = [];
 
@@ -26,7 +27,13 @@ app.get("/events", (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
-  res.write(`data: ${JSON.stringify(tasks)}\n\n`);
+  // Send initial task data
+  res.write(`event: tasks\ndata: ${JSON.stringify(tasks)}\n\n`);
+  
+  // Send initial agent status data if any exists
+  if (Object.keys(agentStatus).length > 0) {
+    res.write(`event: agents\ndata: ${JSON.stringify(agentStatus)}\n\n`);
+  }
 
   const clientId = Date.now();
   const newClient = { id: clientId, res };
@@ -38,8 +45,18 @@ app.get("/events", (req, res) => {
   });
 });
 
-function broadcastUpdate() {
-  const data = `data: ${JSON.stringify(tasks)}\n\n`;
+// Broadcast task updates to all connected clients
+function broadcastTaskUpdate() {
+  const data = `event: tasks\ndata: ${JSON.stringify(tasks)}\n\n`;
+  clients.forEach((client) => client.res.write(data));
+}
+
+// Broadcast agent status updates to all connected clients
+function broadcastAgentUpdate(taskId, agents) {
+  // Update the agent status for this task
+  agentStatus[taskId] = agents;
+  
+  const data = `event: agents\ndata: ${JSON.stringify(agentStatus)}\n\n`;
   clients.forEach((client) => client.res.write(data));
 }
 
@@ -51,11 +68,15 @@ function generateAgentsFromDecomposition(decomposition) {
     agentId: subtask.subtaskId,
     agentName: `Agent for ${subtask.subtaskName}`,
     taskAssigned: subtask.subtaskName,
+    status: "pending", // Add status field
     dependencies: subtask.dependencies,
     parallelGroup: subtask.parallelGroup,
+    startTime: null,
+    endTime: null,
+    result: null,
   }));
   return {
-    mainTask: decomposition.mainTask,
+    mainTask: decomposition.taskId,
     agents: agents,
   };
 }
@@ -68,42 +89,63 @@ class Task {
     this.priority = priority;
     this.dueDate = dueDate;
     this.result = null;
+    this.agentCount = 0; 
   }
 }
 
 async function processTask(task) {
   try {
-    // Update status in-memory
+    
     task.status = "in-progress";
-    broadcastUpdate();
+    broadcastTaskUpdate();
 
     const decompositionResult = await decomposeTask(task.description);
-    // Dump the decomposition result to a file for logging
+   
     const tasksFilePath = path.join(process.cwd(), "tasks.json");
     saveJsonToFile(decompositionResult, tasksFilePath);
     console.log(`Task decomposed and saved to ${tasksFilePath}`);
 
     const agentsResult = generateAgentsFromDecomposition(decompositionResult);
-    // Dump agents data to file
+    
+    task.agentCount = agentsResult.agents.length;
+    broadcastTaskUpdate();
+   
+    broadcastAgentUpdate(task.taskId, agentsResult.agents);
+    
     const agentsFilePath = path.join(process.cwd(), "agents.json");
     saveJsonToFile(agentsResult, agentsFilePath);
     console.log(`Dynamic agents created and saved to ${agentsFilePath}`);
 
     const outputFilePath = path.join(process.cwd(), "output.json");
-    await executeWorkflow(agentsFilePath, outputFilePath);
+    await executeWorkflow(agentsFilePath, outputFilePath, (agentUpdate) => {
+ 
+      const currentAgents = [...agentStatus[task.taskId]];
+      const agentIndex = currentAgents.findIndex(a => a.agentId === agentUpdate.agentId);
+      
+      if (agentIndex !== -1) {
+        currentAgents[agentIndex] = {
+          ...currentAgents[agentIndex],
+          ...agentUpdate
+        };
+        
+        broadcastAgentUpdate(task.taskId, currentAgents);
+      }
+    });
     console.log(`Workflow executed and output saved to ${outputFilePath}`);
 
     const workflowResult = JSON.parse(fs.readFileSync(outputFilePath, "utf-8"));
     task.result = workflowResult;
     task.status = "completed";
     console.log(`Task ${task.taskId} completed successfully.`);
-    broadcastUpdate();
+ 
+    broadcastTaskUpdate();
+    
     return task;
   } catch (error) {
     console.error(`Error processing task ${task.taskId}:`, error.message);
     task.status = "error";
     task.result = { error: error.message };
-    broadcastUpdate();
+    broadcastTaskUpdate();
     return task;
   }
 }
@@ -123,14 +165,13 @@ app.post("/tasks", async (req, res) => {
       `Orchestration complete for task ${updatedTask.taskId}: ${updatedTask.status}`
     );
   });
-  broadcastUpdate();
+  broadcastTaskUpdate();
 });
 
 app.get("/tasks", (req, res) => {
   res.json(tasks);
 });
 
-// Add the missing GET task by ID route
 app.get("/tasks/:taskId", (req, res) => {
   const { taskId } = req.params;
   const task = tasks.find((t) => t.taskId === taskId);
@@ -142,11 +183,22 @@ app.get("/tasks/:taskId", (req, res) => {
   res.json(task);
 });
 
+
+app.get("/tasks/:taskId/agents", (req, res) => {
+  const { taskId } = req.params;
+  const agents = agentStatus[taskId];
+  
+  if (!agents) {
+    return res.status(404).json({ error: "No agents found for this task" });
+  }
+  
+  res.json(agents);
+});
+
 app.put("/tasks/:taskId/status", (req, res) => {
   const { taskId } = req.params;
   const { status } = req.body;
-  
-  // Add validation
+
   const validStatuses = ["pending", "in-progress", "completed", "error"];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ error: "Invalid status value" });
@@ -157,15 +209,14 @@ app.put("/tasks/:taskId/status", (req, res) => {
     return res.status(404).json({ error: "Task not found" });
   }
   task.status = status;
-  broadcastUpdate();
+  broadcastTaskUpdate();
   res.json(task);
 });
 
 app.put("/tasks/:taskId/priority", (req, res) => {
   const { taskId } = req.params;
   const { priority } = req.body;
-  
-  // Add validation
+
   const validPriorities = ["low", "medium", "high", "critical"];
   if (!validPriorities.includes(priority)) {
     return res.status(400).json({ error: "Invalid priority value" });
@@ -176,7 +227,7 @@ app.put("/tasks/:taskId/priority", (req, res) => {
     return res.status(404).json({ error: "Task not found" });
   }
   task.priority = priority;
-  broadcastUpdate();
+  broadcastTaskUpdate();
   res.json(task);
 });
 
@@ -186,8 +237,17 @@ app.delete("/tasks/:taskId", (req, res) => {
   if (index === -1) {
     return res.status(404).json({ error: "Task not found" });
   }
+
+  if (agentStatus[taskId]) {
+    delete agentStatus[taskId];
+  }
+  
   tasks.splice(index, 1);
-  broadcastUpdate();
+  broadcastTaskUpdate();
+
+  const data = `event: agents\ndata: ${JSON.stringify(agentStatus)}\n\n`;
+  clients.forEach((client) => client.res.write(data));
+  
   res.json({ message: "Task deleted successfully" });
 });
 

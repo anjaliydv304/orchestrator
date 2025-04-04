@@ -3,15 +3,15 @@
   "agents": [
     {
       "agentId": 1,
-      "agentName": "Agent for Research the benefits of meditation (physical, mental, emotional)",
-      "taskAssigned": "Research the benefits of meditation (physical, mental, emotional)",
+      "agentName": "Agent for Research the benefits of meditation (stress reduction, improved focus, emotional regulation, etc.)",
+      "taskAssigned": "Research the benefits of meditation (stress reduction, improved focus, emotional regulation, etc.)",
       "dependencies": [],
       "parallelGroup": 1
     },
     {
       "agentId": 2,
-      "agentName": "Agent for Find supporting evidence and credible sources",
-      "taskAssigned": "Find supporting evidence and credible sources",
+      "agentName": "Agent for Find supporting evidence and credible sources (studies, expert opinions, etc.)",
+      "taskAssigned": "Find supporting evidence and credible sources (studies, expert opinions, etc.)",
       "dependencies": [
         1
       ],
@@ -19,8 +19,8 @@
     },
     {
       "agentId": 3,
-      "agentName": "Agent for Outline the article structure (introduction, body paragraphs, conclusion)",
-      "taskAssigned": "Outline the article structure (introduction, body paragraphs, conclusion)",
+      "agentName": "Agent for Create an outline for the article (introduction, body paragraphs, conclusion)",
+      "taskAssigned": "Create an outline for the article (introduction, body paragraphs, conclusion)",
       "dependencies": [
         1,
         2
@@ -29,32 +29,31 @@
     },
     {
       "agentId": 4,
-      "agentName": "Agent for Write the introduction (hook, background, thesis statement)",
-      "taskAssigned": "Write the introduction (hook, background, thesis statement)",
+      "agentName": "Agent for Write the introduction (hook, background information, thesis statement)",
+      "taskAssigned": "Write the introduction (hook, background information, thesis statement)",
       "dependencies": [
         3
       ],
-      "parallelGroup": 2
+      "parallelGroup": 3
     },
     {
       "agentId": 5,
-      "agentName": "Agent for Write body paragraphs (each focusing on a specific benefit, with evidence)",
-      "taskAssigned": "Write body paragraphs (each focusing on a specific benefit, with evidence)",
+      "agentName": "Agent for Write body paragraphs (each focusing on a specific benefit, with supporting evidence)",
+      "taskAssigned": "Write body paragraphs (each focusing on a specific benefit, with supporting evidence)",
       "dependencies": [
         3,
-        1,
         2
       ],
       "parallelGroup": 3
     },
     {
       "agentId": 6,
-      "agentName": "Agent for Write the conclusion (summary of benefits, call to action)",
-      "taskAssigned": "Write the conclusion (summary of benefits, call to action)",
+      "agentName": "Agent for Write the conclusion (summarize main points, restate thesis, call to action)",
+      "taskAssigned": "Write the conclusion (summarize main points, restate thesis, call to action)",
       "dependencies": [
         5
       ],
-      "parallelGroup": 2
+      "parallelGroup": 4
     },
     {
       "agentId": 7,
@@ -62,39 +61,26 @@
       "taskAssigned": "Edit and proofread the article for grammar, spelling, and clarity",
       "dependencies": [
         4,
-        5,
         6
       ],
-      "parallelGroup": 2
+      "parallelGroup": 4
     },
     {
       "agentId": 8,
-      "agentName": "Agent for Create a compelling title and meta description",
-      "taskAssigned": "Create a compelling title and meta description",
-      "dependencies": [
-        7
-      ],
-      "parallelGroup": 2
+      "agentName": "Agent for Choose relevant images or illustrations (optional)",
+      "taskAssigned": "Choose relevant images or illustrations (optional)",
+      "dependencies": [],
+      "parallelGroup": 1
     },
     {
       "agentId": 9,
-      "agentName": "Agent for Format the article for readability (headings, subheadings, bullet points)",
-      "taskAssigned": "Format the article for readability (headings, subheadings, bullet points)",
-      "dependencies": [
-        7
-      ],
-      "parallelGroup": 2
-    },
-    {
-      "agentId": 10,
-      "agentName": "Agent for Review and finalize the article",
-      "taskAssigned": "Review and finalize the article",
+      "agentName": "Agent for Format the article for publication (headings, subheadings, citations)",
+      "taskAssigned": "Format the article for publication (headings, subheadings, citations)",
       "dependencies": [
         7,
-        8,
-        9
+        8
       ],
-      "parallelGroup": 2
+      "parallelGroup": 4
     }
   ]
 }

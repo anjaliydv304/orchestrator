@@ -34,7 +34,6 @@ body {
   padding: 20px;
 }
 
-/* Header */
 .app-header {
   text-align: center;
   margin-bottom: 30px;
@@ -51,7 +50,6 @@ body {
   font-size: 1.1rem;
 }
 
-/* Main content layout */
 .main-content {
   display: grid;
   grid-template-columns: 1fr 2fr;
@@ -64,7 +62,6 @@ body {
   }
 }
 
-/* Form styling */
 .add-task-section {
   background-color: white;
   border-radius: 8px;
@@ -119,7 +116,6 @@ label {
   color: var(--text-color);
 }
 
-/* Buttons */
 .btn {
   padding: 12px 24px;
   border: none;
@@ -148,7 +144,6 @@ label {
   background-color: #bd2130;
 }
 
-/* Task list styling */
 .task-list-section {
   background-color: white;
   border-radius: 8px;
@@ -383,7 +378,7 @@ label {
   border-radius: 4px;
   margin-bottom: 20px;
 }
-/* Agent Panel Styles */
+
 .agent-panel {
   margin-bottom: 10px;
   border-radius: 4px;
@@ -480,7 +475,6 @@ label {
   overflow-y: auto;
 }
 
-/* Status Colors */
 .status-completed {
   background-color: #d1fae5;
   border-color: #10b981;
@@ -565,7 +559,6 @@ label {
   color: #ef4444;
 }
 
-/* Task Expanded View */
 .task-expanded-content {
   padding: 15px;
   background-color: #f9fafb;
@@ -627,7 +620,6 @@ label {
   overflow-y: auto;
 }
 
-/* Task item enhancements */
 .task-header {
   display: flex;
   justify-content: space-between;
@@ -657,17 +649,7 @@ label {
   font-size: 12px;
 }
 
-/* Additional animations */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
 
-.status-in-progress .agent-status-icon {
-  animation: spin 2s linear infinite;
-}
-
-/* Notification styles */
 .notification {
   position: fixed;
   top: 20px;
@@ -686,4 +668,33 @@ label {
   10% { opacity: 1; transform: translateY(0); }
   90% { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(-20px); }
+}
+
+.task-result pre, .agent-result pre, .result-content, .result-json {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.task-item {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.task-expanded-content {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  overflow-x: hidden;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
 }

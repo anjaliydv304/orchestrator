@@ -41,6 +41,8 @@ const AgentPanel = ({ agent, expanded, toggleExpand }) => {
     const start = new Date(startTime);
     const end = new Date(endTime);
     const durationMs = end - start;
+ 
+    if (durationMs < 0) return "0ms";
     
     if (durationMs < 1000) {
       return `${durationMs}ms`;
@@ -168,6 +170,7 @@ function App() {
           
         } catch (err) {
           console.error("Error parsing task SSE data:", err);
+         
         }
       });
 
@@ -176,19 +179,18 @@ function App() {
           const updatedAgentStatus = JSON.parse(event.data);
           console.log("SSE agents update received:", updatedAgentStatus);
           setAgentStatus(updatedAgentStatus);
-        
-          Object.entries(updatedAgentStatus).forEach(([taskId, agents]) => {
+     
+          const tasksToFetch = new Set();
           
+          Object.entries(updatedAgentStatus).forEach(([taskId, agents]) => {
             const matchingTask = tasks.find(t => t.taskId === taskId);
             
             if (matchingTask) {
-          
               const allComplete = agents.every(agent => agent.status === "completed");
               const hasCompletedAgents = agents.some(agent => agent.status === "completed" && agent.result);
             
               if (hasCompletedAgents) {
-                
-                fetchTaskDetails(taskId);
+                tasksToFetch.add(taskId);
               }
               
               if (allComplete && !expandedTasks[taskId]) {
@@ -199,9 +201,14 @@ function App() {
               }
             }
           });
+         
+          tasksToFetch.forEach(taskId => {
+            fetchTaskDetails(taskId);
+          });
           
         } catch (err) {
           console.error("Error parsing agent SSE data:", err);
+     
         }
       });
       
@@ -230,7 +237,8 @@ function App() {
         clearTimeout(reconnectTimer);
       }
     };
-  }, [tasks, expandedTasks]);
+  
+  }, []);
 
   const fetchTaskDetails = async (taskId) => {
     try {

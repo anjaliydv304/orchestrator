@@ -16,7 +16,7 @@ app.use(express.json());
 app.use(cors());
 
 let tasks = [];
-let agentStatus = {}; // Track agent status for each task
+let agentStatus = {}; 
 
 let clients = [];
 
@@ -45,15 +45,14 @@ app.get("/events", (req, res) => {
   });
 });
 
-// Broadcast task updates to all connected clients
+
 function broadcastTaskUpdate() {
   const data = `event: tasks\ndata: ${JSON.stringify(tasks)}\n\n`;
   clients.forEach((client) => client.res.write(data));
 }
 
-// Broadcast agent status updates to all connected clients
 function broadcastAgentUpdate(taskId, agents) {
-  // Update the agent status for this task
+ 
   agentStatus[taskId] = agents;
   
   const data = `event: agents\ndata: ${JSON.stringify(agentStatus)}\n\n`;
@@ -68,7 +67,7 @@ function generateAgentsFromDecomposition(decomposition) {
     agentId: subtask.subtaskId,
     agentName: `Agent for ${subtask.subtaskName}`,
     taskAssigned: subtask.subtaskName,
-    status: "pending", // Add status field
+    status: "pending", 
     dependencies: subtask.dependencies,
     parallelGroup: subtask.parallelGroup,
     startTime: null,

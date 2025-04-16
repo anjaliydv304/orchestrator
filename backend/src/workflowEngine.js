@@ -33,7 +33,6 @@ async function executeAgent(agent, context = {}, updateCallback) {
     const cleanResponse = rawResponse.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleanResponse);
     
-    // Update agent status to completed with result and timestamps
     const endTime = new Date().toISOString();
     const agentResult = {
       agentId: agent.agentId,

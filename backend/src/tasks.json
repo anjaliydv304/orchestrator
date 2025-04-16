@@ -9,7 +9,7 @@
     },
     {
       "subtaskId": 2,
-      "subtaskName": "Find supporting evidence and credible sources (studies, expert opinions, etc.)",
+      "subtaskName": "Find supporting evidence and credible sources (studies, expert opinions)",
       "dependencies": [
         1
       ],
@@ -17,7 +17,7 @@
     },
     {
       "subtaskId": 3,
-      "subtaskName": "Create an outline for the article (introduction, body paragraphs, conclusion)",
+      "subtaskName": "Outline the article structure (introduction, body paragraphs, conclusion)",
       "dependencies": [
         1,
         2
@@ -26,52 +26,62 @@
     },
     {
       "subtaskId": 4,
-      "subtaskName": "Write the introduction (hook, background information, thesis statement)",
+      "subtaskName": "Write the introduction (hook, background on meditation, thesis statement)",
       "dependencies": [
         3
       ],
-      "parallelGroup": 3
+      "parallelGroup": 2
     },
     {
       "subtaskId": 5,
-      "subtaskName": "Write body paragraphs (each focusing on a specific benefit, with supporting evidence)",
+      "subtaskName": "Write body paragraphs (each focusing on a specific benefit, with evidence)",
       "dependencies": [
         3,
         2
       ],
-      "parallelGroup": 3
+      "parallelGroup": 2
     },
     {
       "subtaskId": 6,
-      "subtaskName": "Write the conclusion (summarize main points, restate thesis, call to action)",
+      "subtaskName": "Write the conclusion (summarize benefits, call to action)",
       "dependencies": [
         5
       ],
-      "parallelGroup": 4
+      "parallelGroup": 2
     },
     {
       "subtaskId": 7,
-      "subtaskName": "Edit and proofread the article for grammar, spelling, and clarity",
+      "subtaskName": "Edit and proofread the article for clarity, grammar, and style",
       "dependencies": [
         4,
+        5,
         6
       ],
-      "parallelGroup": 4
+      "parallelGroup": 3
     },
     {
       "subtaskId": 8,
-      "subtaskName": "Choose relevant images or illustrations (optional)",
-      "dependencies": [],
-      "parallelGroup": 1
+      "subtaskName": "Create a compelling title and meta description",
+      "dependencies": [
+        7
+      ],
+      "parallelGroup": 3
     },
     {
       "subtaskId": 9,
-      "subtaskName": "Format the article for publication (headings, subheadings, citations)",
+      "subtaskName": "Format the article for readability (headings, subheadings, bullet points)",
       "dependencies": [
-        7,
-        8
+        7
       ],
-      "parallelGroup": 4
+      "parallelGroup": 3
+    },
+    {
+      "subtaskId": 10,
+      "subtaskName": "Add images or other visuals to enhance the article",
+      "dependencies": [
+        7
+      ],
+      "parallelGroup": 3
     }
   ]
 }

@@ -4,7 +4,7 @@ import * as path from 'node:path';
 export default function generateAgentsFromTasks(taskFilePath, agentFilePath) {
   try {
     const taskData = JSON.parse(fs.readFileSync(taskFilePath, 'utf-8'));
-    
+
     if (!taskData.subtasks || !Array.isArray(taskData.subtasks)) {
       throw new Error("Invalid task format: 'subtasks' array missing.");
     }
@@ -24,7 +24,7 @@ export default function generateAgentsFromTasks(taskFilePath, agentFilePath) {
 
     fs.writeFileSync(agentFilePath, JSON.stringify(agentData, null, 2), 'utf-8');
     console.log(`Agents JSON saved successfully to ${agentFilePath}`);
-    
+
     return agentData;
   } catch (error) {
     console.error("Error generating agents:", error.message);

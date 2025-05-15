@@ -1,39 +1,155 @@
+import generateAgentsFromTasks from '../dynamicAgentCreator';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
+import * as path from 'node:path'; // path is not explicitly used in the function but often in the calling script
 
-export default function generateAgentsFromTasks(taskFilePath, agentFilePath) {
-  try {
-    const taskData = JSON.parse(fs.readFileSync(taskFilePath, 'utf-8'));
+// Mock the 'fs' module
+jest.mock('node:fs');
 
-    if (!taskData.subtasks || !Array.isArray(taskData.subtasks)) {
-      throw new Error("Invalid task format: 'subtasks' array missing.");
-    }
+// Mock console.log and console.error
+global.console = {
+    ...console,
+    log: jest.fn(),
+    error: jest.fn(),
+};
 
-    const agents = taskData.subtasks.map(subtask => ({
-      agentId: subtask.subtaskId,
-      agentName: `Agent for ${subtask.subtaskName}`,
-      taskAssigned: subtask.subtaskName,
-      dependencies: subtask.dependencies,
-      parallelGroup: subtask.parallelGroup
-    }));
+describe('dynamicAgentCreator', () => {
+    const mockTaskFilePath = '/mock/tasks.json';
+    const mockAgentFilePath = '/mock/agents.json';
 
-    const agentData = {
-      mainTask: taskData.mainTask,
-      agents
+    beforeEach(() => {
+        // Reset mocks before each test
+        fs.readFileSync.mockReset();
+        fs.writeFileSync.mockReset();
+        console.log.mockClear();
+        console.error.mockClear();
+    });
+
+    const mockTaskData = {
+        mainTask: 'Test Main Task',
+        subtasks: [
+            {
+                subtaskId: 'sub1',
+                subtaskName: 'First Subtask',
+                dependencies: [],
+                parallelGroup: 'A',
+            },
+            {
+                subtaskId: 'sub2',
+                subtaskName: 'Second Subtask',
+                dependencies: ['sub1'],
+                parallelGroup: 'B',
+            },
+        ],
     };
 
-    fs.writeFileSync(agentFilePath, JSON.stringify(agentData, null, 2), 'utf-8');
-    console.log(`Agents JSON saved successfully to ${agentFilePath}`);
+    it('should generate agent data from a valid task file and write to agent file', () => {
+        fs.readFileSync.mockReturnValue(JSON.stringify(mockTaskData));
 
-    return agentData;
-  } catch (error) {
-    console.error("Error generating agents:", error.message);
-    throw error;
-  }
-}
+        const expectedAgentData = {
+            mainTask: 'Test Main Task',
+            agents: [
+                {
+                    agentId: 'sub1',
+                    agentName: 'Agent for First Subtask',
+                    taskAssigned: 'First Subtask',
+                    dependencies: [],
+                    parallelGroup: 'A',
+                },
+                {
+                    agentId: 'sub2',
+                    agentName: 'Agent for Second Subtask',
+                    taskAssigned: 'Second Subtask',
+                    dependencies: ['sub1'],
+                    parallelGroup: 'B',
+                },
+            ],
+        };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const taskFilePath = path.join(process.cwd(), 'tasks.json');
-  const agentFilePath = path.join(process.cwd(), 'agents.json');
-  generateAgentsFromTasks(taskFilePath, agentFilePath);
-}
+        const result = generateAgentsFromTasks(mockTaskFilePath, mockAgentFilePath);
+
+        expect(fs.readFileSync).toHaveBeenCalledWith(mockTaskFilePath, 'utf-8');
+        expect(result).toEqual(expectedAgentData);
+        expect(fs.writeFileSync).toHaveBeenCalledWith(
+            mockAgentFilePath,
+            JSON.stringify(expectedAgentData, null, 2),
+            'utf-8'
+        );
+        expect(console.log).toHaveBeenCalledWith(`Agents JSON saved successfully to ${mockAgentFilePath}`);
+    });
+
+    it('should throw an error if taskData.subtasks is missing', () => {
+        const invalidTaskData = { mainTask: 'Another Task' }; // No subtasks array
+        fs.readFileSync.mockReturnValue(JSON.stringify(invalidTaskData));
+
+        expect(() => {
+            generateAgentsFromTasks(mockTaskFilePath, mockAgentFilePath);
+        }).toThrow("Invalid task format: 'subtasks' array missing.");
+        expect(console.error).toHaveBeenCalledWith("Error generating agents:", "Invalid task format: 'subtasks' array missing.");
+        expect(fs.writeFileSync).not.toHaveBeenCalled();
+    });
+
+    it('should throw an error if taskData.subtasks is not an array', () => {
+        const invalidTaskData = { mainTask: 'Task C', subtasks: 'not-an-array' };
+        fs.readFileSync.mockReturnValue(JSON.stringify(invalidTaskData));
+
+        expect(() => {
+            generateAgentsFromTasks(mockTaskFilePath, mockAgentFilePath);
+        }).toThrow("Invalid task format: 'subtasks' array missing."); // The check is !Array.isArray
+         expect(console.error).toHaveBeenCalledWith("Error generating agents:", "Invalid task format: 'subtasks' array missing.");
+        expect(fs.writeFileSync).not.toHaveBeenCalled();
+    });
+
+
+    it('should handle subtasks with missing optional fields gracefully (dependencies, parallelGroup)', () => {
+        const taskDataWithMissingFields = {
+            mainTask: 'Task With Missing Fields',
+            subtasks: [
+                { subtaskId: 's1', subtaskName: 'Subtask One' }, // Missing dependencies and parallelGroup
+            ],
+        };
+        fs.readFileSync.mockReturnValue(JSON.stringify(taskDataWithMissingFields));
+
+        const expectedAgentData = {
+            mainTask: 'Task With Missing Fields',
+            agents: [
+                {
+                    agentId: 's1',
+                    agentName: 'Agent for Subtask One',
+                    taskAssigned: 'Subtask One',
+                    dependencies: undefined, // or how your code handles it (currently keeps as undefined)
+                    parallelGroup: undefined,
+                },
+            ],
+        };
+
+        const result = generateAgentsFromTasks(mockTaskFilePath, mockAgentFilePath);
+        expect(result).toEqual(expectedAgentData);
+        expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+
+    it('should re-throw error if fs.readFileSync fails', () => {
+        fs.readFileSync.mockImplementation(() => {
+            throw new Error('File read error');
+        });
+
+        expect(() => {
+            generateAgentsFromTasks(mockTaskFilePath, mockAgentFilePath);
+        }).toThrow('File read error');
+        expect(console.error).toHaveBeenCalledWith("Error generating agents:", "File read error");
+    });
+
+    it('should re-throw error if fs.writeFileSync fails', () => {
+        fs.readFileSync.mockReturnValue(JSON.stringify(mockTaskData));
+        fs.writeFileSync.mockImplementation(() => {
+            throw new Error('File write error');
+        });
+
+        expect(() => {
+            generateAgentsFromTasks(mockTaskFilePath, mockAgentFilePath);
+        }).toThrow('File write error');
+        // console.error in this case is called from the catch block after writeFileSync
+        expect(console.error).toHaveBeenCalledWith("Error generating agents:", "File write error");
+
+    });
+});

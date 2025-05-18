@@ -1,24 +1,27 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react"; // Added useRef
 import axios from "axios";
-import "./index.css"; 
+import "./index.css";
 
-const API_URL = "http://localhost:5000/tasks";
-const EVENT_URL = "http://localhost:5000/events";
+// API and SSE URLs
+const API_URL = "http://localhost:3000/tasks";
+const EVENT_URL = "http://localhost:3000/events"; // Corrected Port
 
-
+// AgentPanel Component: Displays individual agent details 
 const AgentPanel = ({ agent, expanded, toggleExpand }) => {
+  // Get CSS class based on agent status
   const getStatusClass = (status) => {
     switch (status) {
       case "completed": return "status-completed";
       case "in-progress": return "status-in-progress";
       case "pending": return "status-pending";
-      case "waiting": return "status-waiting";
-      case "ready": return "status-ready";
+      case "waiting": return "status-waiting"; // If orchestrator sends this
+      case "ready": return "status-ready";     // If orchestrator sends this
       case "error": return "status-error";
-      default: return "";
+      default: return "status-unknown"; // Default for any new statuses
     }
   };
 
+  // Get icon based on agent status
   const getStatusIcon = (status) => {
     switch (status) {
       case "completed": return "✓";
@@ -31,23 +34,29 @@ const AgentPanel = ({ agent, expanded, toggleExpand }) => {
     }
   };
 
+  // Format time string (e.g., "10:30:45 AM")
   const formatTime = (timeString) => {
-    if (!timeString) return "";
-    return new Date(timeString).toLocaleTimeString();
+    if (!timeString) return "N/A";
+    try {
+      return new Date(timeString).toLocaleTimeString();
+    } catch (e) {
+      return "Invalid Date";
+    }
   };
 
+  // Format duration between start and end time
   const formatDuration = (startTime, endTime) => {
     if (!startTime || !endTime) return "";
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const durationMs = end - start;
- 
-    if (durationMs < 0) return "0ms";
-    
-    if (durationMs < 1000) {
-      return `${durationMs}ms`;
-    } else {
+    try {
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      const durationMs = end - start;
+
+      if (durationMs < 0) return "0ms"; // Should not happen if times are correct
+      if (durationMs < 1000) return `${durationMs}ms`;
       return `${(durationMs / 1000).toFixed(1)}s`;
+    } catch (e) {
+      return "Invalid duration";
     }
   };
 
@@ -55,7 +64,7 @@ const AgentPanel = ({ agent, expanded, toggleExpand }) => {
     <div className={`agent-panel ${getStatusClass(agent.status)}`}>
       <div className="agent-header" onClick={toggleExpand}>
         <div className="agent-status-icon">{getStatusIcon(agent.status)}</div>
-        <div className="agent-name">{agent.agentName}</div>
+        <div className="agent-name">{agent.agentName || agent.agentId}</div> {/* Fallback to agentId if agentName is not present */}
         <div className="agent-status">{agent.status}</div>
         {agent.startTime && (
           <div className="agent-time">
@@ -69,7 +78,7 @@ const AgentPanel = ({ agent, expanded, toggleExpand }) => {
       {expanded && (
         <div className="agent-details">
           <div className="agent-task">
-            <strong>Task:</strong> {agent.taskAssigned}
+            <strong>Task Assigned:</strong> {agent.taskAssigned}
           </div>
           
           {agent.dependencies && agent.dependencies.length > 0 && (
@@ -95,7 +104,17 @@ const AgentPanel = ({ agent, expanded, toggleExpand }) => {
               <pre className="result-content">{
                 typeof agent.result === 'object' 
                   ? JSON.stringify(agent.result, null, 2) 
-                  : agent.result
+                  : String(agent.result)
+              }</pre>
+            </div>
+          )}
+           {agent.error && (
+            <div className="agent-error">
+              <strong>Error:</strong>
+              <pre className="error-content">{
+                typeof agent.error === 'object' 
+                  ? JSON.stringify(agent.error, null, 2) 
+                  : String(agent.error)
               }</pre>
             </div>
           )}
@@ -105,7 +124,9 @@ const AgentPanel = ({ agent, expanded, toggleExpand }) => {
   );
 };
 
+// Main App Component
 function App() {
+  // State variables
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
   const [priority, setPriority] = useState("medium");
@@ -119,31 +140,44 @@ function App() {
   const [expandedAgents, setExpandedAgents] = useState({});
   const [expandedTasks, setExpandedTasks] = useState({});
   const [eventSourceConnected, setEventSourceConnected] = useState(false);
+  const [systemStats, setSystemStats] = useState(null);
+
+  // Refs for SSE listeners to access latest state
+  const tasksRef = useRef(tasks);
+  const expandedTasksRef = useRef(expandedTasks);
+
+  // Keep refs updated
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
+
+  useEffect(() => {
+    expandedTasksRef.current = expandedTasks;
+  }, [expandedTasks]);
 
 
+  // Fetch initial tasks on component mount
   useEffect(() => {
     fetchTasks();
   }, []);
 
-  
+  // Setup Server-Sent Events (SSE)
   useEffect(() => {
     let eventSource;
     let reconnectTimer;
 
     const connectEventSource = () => {
-      
       if (eventSource) {
         eventSource.close();
       }
 
+      console.log("Connecting to SSE at:", EVENT_URL);
       eventSource = new EventSource(EVENT_URL);
-      console.log("Connecting to SSE...");
       
       eventSource.onopen = () => {
         console.log("SSE connection established");
         setEventSourceConnected(true);
         setError("");
-        
         if (reconnectTimer) {
           clearTimeout(reconnectTimer);
           reconnectTimer = null;
@@ -154,23 +188,18 @@ function App() {
         try {
           const updatedTasks = JSON.parse(event.data);
           console.log("SSE tasks update received:", updatedTasks);
-      
           setTasks(updatedTasks);
        
           updatedTasks.forEach(task => {
-            if (task.status === "completed" && task.result && !expandedTasks[task.taskId]) {
-              setExpandedTasks(prev => ({
-                ...prev,
-                [task.taskId]: true
-              }));
-              
-              showNotification(`Task "${task.description}" completed!`);
+            if ((task.status === "completed" || task.status === "completed_with_errors") && task.result && !expandedTasksRef.current[task.taskId]) {
+              setExpandedTasks(prev => ({ ...prev, [task.taskId]: true }));
+              if (task.status === "completed") {
+                showNotification(`Task "${task.description}" completed!`);
+              }
             }
           });
-          
         } catch (err) {
           console.error("Error parsing task SSE data:", err);
-         
         }
       });
 
@@ -180,35 +209,29 @@ function App() {
           console.log("SSE agents update received:", updatedAgentStatus);
           setAgentStatus(updatedAgentStatus);
      
-          const tasksToFetch = new Set();
-          
-          Object.entries(updatedAgentStatus).forEach(([taskId, agents]) => {
-            const matchingTask = tasks.find(t => t.taskId === taskId);
+          Object.entries(updatedAgentStatus).forEach(([taskId, agentsData]) => {
+            const agentsArray = Object.values(agentsData);
+            const matchingTask = tasksRef.current.find(t => t.taskId === taskId); // Use ref
             
             if (matchingTask) {
-              const allComplete = agents.every(agent => agent.status === "completed");
-              const hasCompletedAgents = agents.some(agent => agent.status === "completed" && agent.result);
-            
-              if (hasCompletedAgents) {
-                tasksToFetch.add(taskId);
-              }
-              
-              if (allComplete && !expandedTasks[taskId]) {
-                setExpandedTasks(prev => ({
-                  ...prev,
-                  [taskId]: true
-                }));
+              const allAgentsComplete = agentsArray.every(agent => agent.status === "completed" || agent.status === "error");
+              if (allAgentsComplete && !expandedTasksRef.current[taskId]) { // Use ref
+                setExpandedTasks(prev => ({ ...prev, [taskId]: true }));
               }
             }
           });
-         
-          tasksToFetch.forEach(taskId => {
-            fetchTaskDetails(taskId);
-          });
-          
         } catch (err) {
           console.error("Error parsing agent SSE data:", err);
-     
+        }
+      });
+
+      eventSource.addEventListener("stats", (event) => {
+        try {
+          const statsData = JSON.parse(event.data);
+          console.log("SSE stats update received:", statsData);
+          setSystemStats(statsData);
+        } catch (err) {
+          console.error("Error parsing stats SSE data:", err);
         }
       });
       
@@ -218,11 +241,11 @@ function App() {
         setError("Real-time connection lost. Attempting to reconnect...");
         eventSource.close();
         
-        
+        if (reconnectTimer) clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(() => {
           console.log("Attempting to reconnect to SSE...");
           connectEventSource();
-        }, 3000);
+        }, 5000);
       };
     };
 
@@ -237,8 +260,7 @@ function App() {
         clearTimeout(reconnectTimer);
       }
     };
-  
-  }, []);
+  }, []); // Empty dependency array (or [EVENT_URL] if it could change)
 
   const fetchTaskDetails = async (taskId) => {
     try {
@@ -251,40 +273,41 @@ function App() {
         )
       );
       
-      if (updatedTask.result && updatedTask.status === "completed") {
+      if (updatedTask.result && (updatedTask.status === "completed" || updatedTask.status === "completed_with_errors")) {
         showNotification(`Task "${updatedTask.description}" result updated!`);
       }
-      
     } catch (err) {
       console.error(`Error fetching task ${taskId} details:`, err);
     }
   };
 
   const toggleAgentExpand = (taskId, agentId) => {
-    setExpandedAgents(prev => {
-      const key = `${taskId}-${agentId}`;
-      return {
-        ...prev,
-        [key]: !prev[key]
-      };
-    });
+    const key = `${taskId}-${agentId}`;
+    setExpandedAgents(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Corrected toggleTaskExpand
   const toggleTaskExpand = (taskId) => {
-    setExpandedTasks(prev => ({
-      ...prev,
-      [taskId]: !prev[taskId]
+    const wasCurrentlyExpanded = expandedTasks[taskId];
+
+    setExpandedTasks(currentExpandedTasks => ({
+      ...currentExpandedTasks,
+      [taskId]: !currentExpandedTasks[taskId]
     }));
+
+    const task = tasks.find(t => t.taskId === taskId);
+    if (task && !wasCurrentlyExpanded) {
+      fetchTaskDetails(taskId);
+    }
   };
 
   const showNotification = (message) => {
     setNotification(message);
-    setTimeout(() => setNotification(null), 3000);
+    setTimeout(() => setNotification(null), 4000);
   };
 
   const fetchTasks = async () => {
     setLoading(true);
-    setError("");
     try {
       const response = await axios.get(API_URL);
       setTasks(response.data);
@@ -301,85 +324,80 @@ function App() {
     e.preventDefault();
     if (!newTask.trim()) {
       setError("Task description is required!");
+      showNotification("Task description cannot be empty.");
       return;
     }
+    setNotification("Adding task...");
 
-    setLoading(true);
     try {
       const response = await axios.post(API_URL, { 
         description: newTask, 
         priority, 
-        dueDate 
+        dueDate: dueDate || null
       });
       
-      console.log("Task added:", response.data);
-      
-      setTasks(prev => [...prev, response.data]);
-      
+      console.log("Task added via API, server response:", response.data);
       setNewTask("");
       setPriority("medium");
       setDueDate("");
-      showNotification("Task added successfully!");
+      showNotification(`Task "${response.data.description}" submitted successfully!`);
     } catch (err) {
       console.error("Error adding task:", err);
-      setError("Error adding task. Please try again.");
+      setError(err.response?.data?.error || "Error adding task. Please try again.");
+      showNotification("Failed to add task.");
     } finally {
-      setLoading(false);
+      if (notification === "Adding task...") setNotification(null);
     }
   };
 
   const updateStatus = async (taskId, status) => {
     try {
       await axios.put(`${API_URL}/${taskId}/status`, { status });
- 
       setTasks(prev => 
         prev.map(task => 
-          task.taskId === taskId ? { ...task, status } : task
+          task.taskId === taskId ? { ...task, status, updatedAt: new Date().toISOString() } : task
         )
       );
-      
-      showNotification(`Task status updated to ${status}`);
+      showNotification(`Task status updated to ${status}.`);
     } catch (err) {
       console.error("Error updating status:", err);
-      setError("Error updating status. Please try again.");
+      setError(err.response?.data?.error || "Error updating status.");
+      showNotification("Failed to update task status.");
     }
   };
 
   const updatePriority = async (taskId, newPriority) => {
     try {
       await axios.put(`${API_URL}/${taskId}/priority`, { priority: newPriority });
-
       setTasks(prev => 
         prev.map(task => 
-          task.taskId === taskId ? { ...task, priority: newPriority } : task
+          task.taskId === taskId ? { ...task, priority: newPriority, updatedAt: new Date().toISOString() } : task
         )
       );
-      
-      showNotification(`Task priority updated to ${newPriority}`);
+      showNotification(`Task priority updated to ${newPriority}.`);
     } catch (err) {
       console.error("Error updating priority:", err);
-      setError("Error updating priority. Please try again.");
+      setError(err.response?.data?.error || "Error updating priority.");
+      showNotification("Failed to update task priority.");
     }
   };
 
   const deleteTask = async (taskId) => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    if (!window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) return;
     
     try {
       await axios.delete(`${API_URL}/${taskId}`);
-
       setTasks(prev => prev.filter(task => task.taskId !== taskId));
-
       setAgentStatus(prev => {
         const newStatus = { ...prev };
         delete newStatus[taskId];
         return newStatus;
       });
-      
-      showNotification("Task deleted successfully");
+      showNotification("Task deleted successfully.");
     } catch (err) {
       console.error("Error deleting task:", err);
-      setError("Error deleting task. Please try again.");
+      setError(err.response?.data?.error || "Error deleting task.");
+      showNotification("Failed to delete task.");
     }
   };
 
@@ -390,12 +408,15 @@ function App() {
 
   const sortedTasks = [...filteredTasks].sort((a, b) => {
     if (sortBy === "dueDate") {
+      if (!a.dueDate && !b.dueDate) return 0;
       if (!a.dueDate) return 1;
       if (!b.dueDate) return -1;
       return new Date(a.dueDate) - new Date(b.dueDate);
     } else if (sortBy === "priority") {
       const priorityValues = { high: 3, medium: 2, low: 1 };
-      return priorityValues[b.priority] - priorityValues[a.priority];
+      return (priorityValues[b.priority] || 0) - (priorityValues[a.priority] || 0);
+    } else if (sortBy === 'createdAt') {
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
     }
     return 0;
   });
@@ -415,55 +436,84 @@ function App() {
       case "in-progress": return "status-in-progress";
       case "pending": return "status-pending";
       case "error": return "status-error";
-      default: return "";
+      case "decomposing": return "status-decomposing";
+      case "evaluating": return "status-evaluating";
+      case "completed_with_errors": return "status-completed-errors";
+      default: return "status-unknown";
     }
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString, includeTime = false) => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
+    try {
+      const date = new Date(dateString);
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      if (includeTime) {
+        options.hour = '2-digit';
+        options.minute = '2-digit';
+      }
+      return date.toLocaleDateString(undefined, options);
+    } catch (e) {
+      return "Invalid Date";
+    }
   };
 
   const isOverdue = (task) => {
-    if (!task.dueDate || task.status === "completed") return false;
-    return new Date(task.dueDate) < new Date();
+    if (!task.dueDate || task.status === "completed" || task.status === "completed_with_errors") return false;
+    try {
+      return new Date(task.dueDate) < new Date() && task.status !== "pending";
+    } catch (e) {
+      return false;
+    }
   };
 
   const getAgentStatusSummary = (taskId) => {
-    const agents = agentStatus[taskId] || [];
-    if (!agents.length) return { counts: {}, total: 0 };
+    const agentsForTask = agentStatus[taskId];
+    if (!agentsForTask || Object.keys(agentsForTask).length === 0) return { counts: {}, total: 0 };
     
-    const counts = agents.reduce((acc, agent) => {
+    const agentsArray = Object.values(agentsForTask);
+    const counts = agentsArray.reduce((acc, agent) => {
       acc[agent.status] = (acc[agent.status] || 0) + 1;
       return acc;
     }, {});
     
-    const total = agents.length;
+    const total = agentsArray.length;
     return { counts, total };
   };
 
+  // JSX for the component
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1>Task Orchestrator</h1>
-        <p>Manage your tasks with real-time agent execution updates</p>
-        {eventSourceConnected ? (
-          <div className="connection-status connected">
-            ● Real-time updates connected
-          </div>
-        ) : (
-          <div className="connection-status disconnected">
-            ● Real-time updates disconnected
+        <h1>Task Orchestrator Dashboard</h1>
+        <div className="header-meta">
+            <p>Manage tasks with real-time agent execution updates.</p>
+            {eventSourceConnected ? (
+              <div className="connection-status connected">
+                ● Real-time updates connected
+              </div>
+            ) : (
+              <div className="connection-status disconnected">
+                ● Real-time updates disconnected {error && "(Attempting to reconnect)"}
+              </div>
+            )}
+        </div>
+        {systemStats && (
+          <div className="system-stats">
+            <h4>System Info:</h4>
+            {systemStats.totalDocumentsInDB !== undefined && <span>Vector DB Docs: {systemStats.totalDocumentsInDB} | </span>}
+            {systemStats.averageAgentScore !== undefined && <span>Avg. Agent Score: {systemStats.averageAgentScore.toFixed(2)} | </span>}
+            {systemStats.lastUpdatedAt && <span>Last Updated: {formatDate(systemStats.lastUpdatedAt, true)}</span>}
           </div>
         )}
       </header>
 
-      {notification && <div className="notification">{notification}</div>}
-      {error && <div className="error-message">{error}</div>}
+      {notification && <div className={`notification ${notification.includes("Failed") || notification.includes("Error") ? 'notification-error' : 'notification-success'}`}>{notification}</div>}
+      {error && !notification?.includes(error) && <div className="error-message">{error}</div>}
+
 
       <div className="main-content">
-        <section className="add-task-section">
+        <section className="add-task-section card">
           <h2>Add New Task</h2>
           <form className="task-form" onSubmit={addTask}>
             <div className="form-group">
@@ -471,10 +521,11 @@ function App() {
               <input
                 id="task-description"
                 type="text"
-                placeholder="What needs to be done?"
+                placeholder="e.g., Research quantum computing advancements"
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
                 className="form-control"
+                required
               />
             </div>
             
@@ -494,13 +545,14 @@ function App() {
               </div>
               
               <div className="form-group">
-                <label htmlFor="task-due-date">Due Date:</label>
+                <label htmlFor="task-due-date">Due Date (Optional):</label>
                 <input
                   id="task-due-date"
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   className="form-control"
+                  min={new Date().toISOString().split("T")[0]}
                 />
               </div>
             </div>
@@ -508,20 +560,20 @@ function App() {
             <button 
               type="submit" 
               className="btn btn-primary"
-              disabled={loading}
+              disabled={loading && tasks.length === 0}
             >
-              {loading ? 'Adding...' : 'Add Task'}
+              { (loading && tasks.length === 0) ? 'Loading...' : 'Add Task'}
             </button>
           </form>
         </section>
 
-        <section className="task-list-section">
+        <section className="task-list-section card">
           <div className="task-controls">
-            <h2>My Tasks {tasks.length > 0 && `(${filteredTasks.length})`}</h2>
+            <h2>My Tasks {tasks.length > 0 && `(${filteredTasks.length} of ${tasks.length})`}</h2>
             
             <div className="task-filters">
               <div className="filter-group">
-                <label htmlFor="status-filter">Status:</label>
+                <label htmlFor="status-filter">Filter by Status:</label>
                 <select 
                   id="status-filter"
                   value={filter} 
@@ -530,8 +582,11 @@ function App() {
                 >
                   <option value="all">All</option>
                   <option value="pending">Pending</option>
+                  <option value="decomposing">Decomposing</option>
                   <option value="in-progress">In Progress</option>
+                  <option value="evaluating">Evaluating</option>
                   <option value="completed">Completed</option>
+                  <option value="completed_with_errors">Completed (w/ Errors)</option>
                   <option value="error">Error</option>
                 </select>
               </div>
@@ -544,6 +599,7 @@ function App() {
                   onChange={(e) => setSortBy(e.target.value)}
                   className="form-control"
                 >
+                  <option value="createdAt">Created Date</option>
                   <option value="dueDate">Due Date</option>
                   <option value="priority">Priority</option>
                 </select>
@@ -552,9 +608,10 @@ function App() {
               <button 
                 onClick={fetchTasks} 
                 className="btn btn-secondary"
-                title="Manually refresh tasks"
+                title="Manually refresh all tasks"
+                disabled={loading}
               >
-                ↻ Refresh
+                {loading ? 'Refreshing...' : '↻ Refresh Tasks'}
               </button>
             </div>
           </div>
@@ -568,34 +625,40 @@ function App() {
             <div className="task-list-container">
               {sortedTasks.length === 0 ? (
                 <div className="empty-state">
-                  <p>No tasks available. Add your first task to get started!</p>
+                  <p>{filter === 'all' ? 'No tasks yet. Add one above!' : `No tasks match the current filter "${filter}".`}</p>
                 </div>
               ) : (
                 <ul className="task-list">
                   {sortedTasks.map((task) => (
                     <li 
                       key={task.taskId} 
-                      className={`task-item ${getStatusClass(task.status)} ${isOverdue(task) ? 'overdue' : ''}`}
+                      className={`task-item card ${getStatusClass(task.status)} ${isOverdue(task) ? 'overdue' : ''}`}
                     >
                       <div className="task-header" onClick={() => toggleTaskExpand(task.taskId)}>
                         <div className="task-title-section">
-                          <span className={`priority-indicator ${getPriorityClass(task.priority)}`}></span>
+                          <span className={`priority-indicator ${getPriorityClass(task.priority)}`} title={`Priority: ${task.priority}`}></span>
                           <h3 className="task-title">{task.description}</h3>
-                          {task.result && <span className="result-indicator">✓ Results available</span>}
+                          {(task.status === "completed" || task.status === "completed_with_errors") && task.result && 
+                            <span className="result-indicator" title="Results available">✓</span>}
+                          {task.overallScore !== null && task.overallScore !== undefined && (
+                            <span className="overall-score" title={`Overall Score: ${task.overallScore}`}>
+                                Score: {typeof task.overallScore === 'number' ? task.overallScore.toFixed(2) : task.overallScore}
+                            </span>
+                          )}
                         </div>
 
                         <div className="task-meta">
-                          <span className={`task-status ${getStatusClass(task.status)}`}>
-                            {task.status}
+                          <span className={`task-status-badge ${getStatusClass(task.status)}`}>
+                            {task.status.replace(/_/g, ' ')}
                           </span>
                           
                           {task.agentCount > 0 && (
-                            <span className="agent-count">
+                            <span className="agent-count" title={`${task.agentCount} agents assigned`}>
                               {task.agentCount} agents
                             </span>
                           )}
                           
-                          <span className="task-due-date">
+                          <span className="task-due-date" title={task.dueDate ? `Due: ${formatDate(task.dueDate)}` : "No due date"}>
                             Due: {formatDate(task.dueDate)}
                           </span>
                           
@@ -607,87 +670,111 @@ function App() {
 
                       {expandedTasks[task.taskId] && (
                         <div className="task-expanded-content">
+                          <div className="task-timestamps">
+                            <span>Created: {formatDate(task.createdAt, true)}</span>
+                            <span>Last Updated: {formatDate(task.updatedAt, true)}</span>
+                            {(task.status === "completed" || task.status === "completed_with_errors") && task.completedAt && 
+                                <span>Completed: {formatDate(task.completedAt, true)}</span>}
+                          </div>
                           <div className="task-actions">
-                            <select 
-                              value={task.status}
-                              onChange={(e) => updateStatus(task.taskId, e.target.value)}
-                              className="form-control"
-                            >
-                              <option value="pending">Pending</option>
-                              <option value="in-progress">In Progress</option>
-                              <option value="completed">Completed</option>
-                              <option value="error">Error</option>
-                            </select>
+                            <label>Status:
+                                <select 
+                                value={task.status}
+                                onChange={(e) => updateStatus(task.taskId, e.target.value)}
+                                className="form-control action-select"
+                                >
+                                <option value="pending">Pending</option>
+                                <option value="decomposing">Decomposing</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="evaluating">Evaluating</option>
+                                <option value="completed">Completed</option>
+                                <option value="completed_with_errors">Completed (w/ Errors)</option>
+                                <option value="error">Error</option>
+                                </select>
+                            </label>
                             
-                            <select 
-                              value={task.priority}
-                              onChange={(e) => updatePriority(task.taskId, e.target.value)}
-                              className="form-control"
-                            >
-                              <option value="low">Low Priority</option>
-                              <option value="medium">Medium Priority</option>
-                              <option value="high">High Priority</option>
-                            </select>
+                            <label>Priority:
+                                <select 
+                                value={task.priority}
+                                onChange={(e) => updatePriority(task.taskId, e.target.value)}
+                                className="form-control action-select"
+                                >
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                </select>
+                            </label>
                             
                             <button 
                               onClick={() => deleteTask(task.taskId)}
                               className="btn btn-danger"
                             >
-                              Delete
+                              Delete Task
                             </button>
                           </div>
                     
-                          {agentStatus[task.taskId] && agentStatus[task.taskId].length > 0 && (
-                            <div className="agent-summary">
-                              <h4>Agent Status Overview</h4>
-                              <div className="agent-status-bars">
-                                {(() => {
-                                  const { counts, total } = getAgentStatusSummary(task.taskId);
-                                  return total > 0 ? (
-                                    <div className="status-progress-bar">
-                                      {Object.entries(counts).map(([status, count]) => (
-                                        <div 
-                                          key={status}
-                                          className={`status-segment ${getStatusClass(status)}`}
-                                          style={{ width: `${(count / total) * 100}%` }}
-                                          title={`${status}: ${count} agents`}
-                                        >
-                                          {count > 0 && `${count}`}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <div>No agent data available</div>
-                                  );
-                                })()}
+                          {agentStatus[task.taskId] && Object.keys(agentStatus[task.taskId]).length > 0 ? (
+                            <>
+                              <div className="agent-summary card">
+                                <h4>Agent Status Overview ({Object.keys(agentStatus[task.taskId]).length} Agents)</h4>
+                                <div className="agent-status-bars">
+                                  {(() => {
+                                    const { counts, total } = getAgentStatusSummary(task.taskId);
+                                    return total > 0 ? (
+                                      <div className="status-progress-bar">
+                                        {Object.entries(counts).map(([status, count]) => (
+                                          <div 
+                                            key={status}
+                                            className={`status-segment ${getStatusClass(status)}`}
+                                            style={{ width: `${(count / total) * 100}%` }}
+                                            title={`${status.replace(/_/g, ' ')}: ${count} agent(s)`}
+                                          >
+                                            {count > 0 ? `${count}`: ''}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div>No agent data available for progress bar.</div>
+                                    );
+                                  })()}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                      
-                          {agentStatus[task.taskId] && agentStatus[task.taskId].length > 0 ? (
-                            <div className="agent-panels">
-                              <h4>Agent Execution Details</h4>
-                              {agentStatus[task.taskId].map((agent) => (
-                                <AgentPanel
-                                  key={agent.agentId}
-                                  agent={agent}
-                                  expanded={expandedAgents[`${task.taskId}-${agent.agentId}`] || false}
-                                  toggleExpand={() => toggleAgentExpand(task.taskId, agent.agentId)}
-                                />
-                              ))}
-                            </div>
+                              
+                              <div className="agent-panels card">
+                                <h4>Agent Execution Details</h4>
+                                {Object.values(agentStatus[task.taskId]).map((agent) => (
+                                  <AgentPanel
+                                    key={agent.agentId}
+                                    agent={agent}
+                                    expanded={expandedAgents[`${task.taskId}-${agent.agentId}`] || false}
+                                    toggleExpand={() => toggleAgentExpand(task.taskId, agent.agentId)}
+                                  />
+                                ))}
+                              </div>
+                            </>
                           ) : (
                             <div className="no-agents-message">
-                              <p>No agent data available for this task yet.</p>
+                              <p>No agent execution data available for this task yet.</p>
                             </div>
                           )}
                          
-                          {task.result && (
-                            <div className="task-result">
-                              <h4>Task Result</h4>
+                          {(task.status === "completed" || task.status === "completed_with_errors") && task.result && (
+                            <div className="task-result card">
+                              <h4>Final Task Result</h4>
                               <pre className="result-json">
-                                {JSON.stringify(task.result, null, 2)}
+                                {typeof task.result === 'object' ? JSON.stringify(task.result, null, 2) : String(task.result)}
                               </pre>
+                            </div>
+                          )}
+                          {task.evaluations && (task.evaluations.systemEvaluation || task.evaluations.agentEvaluations?.length > 0) && (
+                            <div className="task-evaluations card">
+                                <h4>Evaluation Summary</h4>
+                                {task.evaluations.systemEvaluation?.systemRating !== undefined && (
+                                    <p><strong>Overall System Rating:</strong> {task.evaluations.systemEvaluation.systemRating.toFixed(2)}</p>
+                                )}
+                                {task.evaluations.systemEvaluation?.feedback && (
+                                    <p><strong>System Feedback:</strong> {task.evaluations.systemEvaluation.feedback}</p>
+                                )}
                             </div>
                           )}
                         </div>
@@ -700,6 +787,9 @@ function App() {
           )}
         </section>
       </div>
+      <footer className="app-footer">
+        <p>&copy; {new Date().getFullYear()} Task Orchestrator. All rights reserved.</p>
+      </footer>
     </div>
   );
 }

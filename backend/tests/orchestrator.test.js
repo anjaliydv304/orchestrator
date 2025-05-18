@@ -1,226 +1,234 @@
-import { jest } from "@jest/globals";
-import { v4 as uuidv4 } from "uuid";
-import request from "supertest";
-import http from "http";
+import { jest } from '@jest/globals';
+import request from 'supertest';
+import { app } from '../src/orchestrator'; // Assuming orchestrator.js exports 'app'
+import { decomposeTask } from '../src/tasks/taskDecomposer'; //
+import { executeWorkflow } from '../src/engine/workflowEngine'; //
+import { getCollectionStats } from '../src/services/vectorDb'; //
+import fs from 'node:fs';
 
-jest.unstable_mockModule("../src/workflowEngine.js", () => ({
-  executeWorkflow: jest.fn().mockResolvedValue({ status: "completed" }),
-}));
-
-jest.unstable_mockModule("../src/taskDecomposer.js", () => ({
-  decomposeTask: jest.fn().mockResolvedValue({
-    mainTask: "Mocked Task",
-    subtasks: [],
-  }),
+jest.mock('../src/tasks/taskDecomposer', () => ({ //
+  decomposeTask: jest.fn(),
   saveJsonToFile: jest.fn(),
 }));
+jest.mock('../src/engine/workflowEngine', () => ({ //
+  executeWorkflow: jest.fn(),
+}));
+jest.mock('../src/services/vectorDb', () => ({ //
+  storeTaskEmbeddings: jest.fn(),
+  retrieveRelevantContext: jest.fn(),
+  getCollectionStats: jest.fn(() => Promise.resolve({ tasks_collection: 0 })),
+  initializeCollections: jest.fn(), // Mock if it's called during startup
+}));
+jest.mock('node:fs', () => ({
+  ...jest.requireActual('node:fs'), // Import and retain default behavior
+  writeFileSync: jest.fn(),
+  readFileSync: jest.fn(),
+  existsSync: jest.fn().mockReturnValue(false), // Default to file not existing
+  unlinkSync: jest.fn(),
+}));
 
-describe("Orchestrator API Unit Tests", () => {
-  let taskId;
-  let mockDecomposeTask;
-  let app;
-  let server;
-  let sseClients = [];
+// Mock an LLM response for evaluation to avoid actual LLM calls
+jest.mock('../src/evaluation/evaluation.js', () => { //
+    const originalModule = jest.requireActual('../src/evaluation/evaluation.js'); //
+    return {
+        ...originalModule,
+        AgentEvaluator: jest.fn().mockImplementation(() => ({
+            evaluateAgent: jest.fn().mockResolvedValue({
+                agentId: 'mockAgentId',
+                taskAssigned: 'mockTask',
+                status: 'evaluated',
+                accuracy: { rating: 8, reason: 'Mocked good accuracy' },
+                completeness: { rating: 9, reason: 'Mocked good completeness' },
+                coherence: { rating: 7, reason: 'Mocked good coherence' },
+                efficiency: { rating: 8, reason: 'Mocked good efficiency' },
+                overall: 8.0,
+                feedback: 'Mocked positive feedback.',
+                timestamp: new Date().toISOString()
+            }),
+            getSummaryStatistics: jest.fn().mockReturnValue({ accuracy: { average: 8 }})
+        })),
+        SystemEvaluator: jest.fn().mockImplementation(() => ({
+            evaluateTaskCompletion: jest.fn().mockResolvedValue({
+                taskId: 'mockTaskId',
+                systemRating: 8.5,
+                analysis: 'Mocked system analysis: Good performance.',
+                recommendations: 'Mocked: Continue monitoring.',
+                timestamp: new Date().toISOString()
+            }),
+            getSystemPerformanceSummary: jest.fn().mockReturnValue({ averageSystemRating: 8.5 })
+        })),
+    };
+});
 
-  beforeEach(async () => {
-    taskId = uuidv4();
-    process.env.GEMINI_API_KEY = "test-api-key";
 
-    jest.resetModules();
+describe('Orchestrator API', () => {
+  beforeEach(() => {
+    // Reset mocks before each test
+    decomposeTask.mockReset();
+    executeWorkflow.mockReset();
+    getCollectionStats.mockReset();
+    fs.writeFileSync.mockReset();
+    fs.unlinkSync.mockReset();
 
-    mockDecomposeTask = (await import("../src/taskDecomposer.js")).decomposeTask;
-    jest.spyOn(console, "log").mockImplementation(() => {});
-    jest.spyOn(console, "error").mockImplementation(() => {});
-
-    const orchestrator = await import("../src/orchestrator.js");
-    app = orchestrator.default;
-    server = orchestrator.server;
-    
-    if (app._router && app._router.stack) {
-      const eventsRoute = app._router.stack.find(
-        layer => layer.route && layer.route.path === '/events'
-      );
-      
-      if (eventsRoute && eventsRoute.route.stack && eventsRoute.route.stack[0]) {
-        const originalHandler = eventsRoute.route.stack[0].handle;
-        eventsRoute.route.stack[0].handle = function(req, res, next) {
-          sseClients.push(res);
-          return originalHandler(req, res, next);
-        };
-      }
-    }
-  });
-
-  afterEach((done) => {
-    console.log.mockRestore();
-    console.error.mockRestore();
-
-    sseClients.forEach(client => {
-      if (client.connection && !client.connection.destroyed) {
-        client.end();
-      }
+    // Provide default mock implementations
+    getCollectionStats.mockResolvedValue({
+        tasks_collection: 0,
+        agent_executions_collection: 0,
+        knowledge_base_collection: 0,
+        agent_memory_collection: 0,
     });
-    sseClients = [];
-
-    if (server && server.close) {
-      server.close(() => {
-        delete process.env.GEMINI_API_KEY;
-        done();
-      });
-    } else {
-      delete process.env.GEMINI_API_KEY;
-      done();
-    }
-  }, 10000);
-
-  it("should create a new task", async () => {
-    const response = await request(app)
-      .post("/tasks")
-      .send({ description: "Test task" });
-
-    expect(response.statusCode).toBe(201);
-    expect(response.body.description).toBe("Test task");
-    expect(response.body.status).toBe("pending");
-    expect(response.body.taskId).toBeDefined();
-    expect(mockDecomposeTask).toHaveBeenCalledWith("Test task");
-  });
-
-  it("should get all tasks", async () => {
-    await request(app).post("/tasks").send({ description: "Task 1" });
-    await request(app).post("/tasks").send({ description: "Task 2" });
-
-    const response = await request(app).get("/tasks");
-
-    expect(response.statusCode).toBe(200);
-    expect(Array.isArray(response.body)).toBe(true);
-    expect(response.body.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("should update task status", async () => {
-    const createTaskResponse = await request(app)
-      .post("/tasks")
-      .send({ description: "Update task status" });
-    const taskId = createTaskResponse.body.taskId;
-
-    const updateResponse = await request(app)
-      .put(`/tasks/${taskId}/status`)
-      .send({ status: "in-progress" });
-
-    expect(updateResponse.statusCode).toBe(200);
-    expect(updateResponse.body.status).toBe("in-progress");
-  });
-
-  it("should update task priority", async () => {
-    const createTaskResponse = await request(app)
-      .post("/tasks")
-      .send({ description: "Update task priority" });
-    const taskId = createTaskResponse.body.taskId;
-
-    const updateResponse = await request(app)
-      .put(`/tasks/${taskId}/priority`)
-      .send({ priority: "high" });
-
-    expect(updateResponse.statusCode).toBe(200);
-    expect(updateResponse.body.priority).toBe("high");
-  });
-
-  it("should handle invalid task priority", async () => {
-    const createTaskResponse = await request(app)
-      .post("/tasks")
-      .send({ description: "Invalid priority task" });
-    const taskId = createTaskResponse.body.taskId;
-
-    const updateResponse = await request(app)
-      .put(`/tasks/${taskId}/priority`)
-      .send({ priority: "invalid-priority" });
-
-    expect(updateResponse.statusCode).toBe(400);
-  });
-
-  it("should delete a task", async () => {
-    const createTaskResponse = await request(app)
-      .post("/tasks")
-      .send({ description: "Delete this task" });
-    const taskId = createTaskResponse.body.taskId;
-
-    const deleteResponse = await request(app).delete(`/tasks/${taskId}`);
-
-    expect(deleteResponse.statusCode).toBe(200);
-
-    const getResponse = await request(app).get("/tasks");
-    const foundTask = getResponse.body.find((task) => task.taskId === taskId);
-    expect(foundTask).toBeUndefined();
-  });
-
-  it("should return 404 if task not found for update/delete", async () => {
-    const nonExistentId = uuidv4();
-    
-    const updateStatusResponse = await request(app)
-      .put(`/tasks/${nonExistentId}/status`)
-      .send({ status: "in-progress" });
-    expect(updateStatusResponse.statusCode).toBe(404);
-    
-    const updatePriorityResponse = await request(app)
-      .put(`/tasks/${nonExistentId}/priority`)
-      .send({ priority: "high" });
-    expect(updatePriorityResponse.statusCode).toBe(404);
-    
-    const deleteResponse = await request(app).delete(`/tasks/${nonExistentId}`);
-    expect(deleteResponse.statusCode).toBe(404);
-  });
-
-  it("should handle SSE connections with proper response headers", async () => {
-    return new Promise((resolve, reject) => {
-      const req = http.get(`http://localhost:${server.address().port}/events`, (res) => {
-        try {
-          expect(res.statusCode).toBe(200);
-          expect(res.headers["content-type"]).toContain("text/event-stream");
-
-         
-          res.on("data", (chunk) => {
-            
-            res.destroy();
-            req.destroy();
-            resolve();
-          });
-
-          setTimeout(() => {
-            res.destroy();
-            req.destroy();
-            resolve();
-          }, 500);
-        } catch (error) {
-          res.destroy();
-          req.destroy();
-          reject(error);
-        }
-      });
-
-      req.on("error", (err) => {
-        reject(err);
-      });
+    decomposeTask.mockResolvedValue({ //
+      taskId: expect.any(String),
+      mainTask: 'Test main task',
+      subtasks: [
+        { subtaskId: 'sub1', subtaskName: 'Subtask 1', dependencies: [], parallelGroup: 'A', description: 'Desc 1' },
+        { subtaskId: 'sub2', subtaskName: 'Subtask 2', dependencies: ['sub1'], parallelGroup: 'B', description: 'Desc 2' },
+      ],
     });
-  }, 3000);
-
-  it("should handle missing fields in task creation", async () => {
-    const response = await request(app)
-      .post("/tasks")
-      .send({}); 
-
-    expect(response.statusCode).toBe(400);
+    executeWorkflow.mockResolvedValue({ //
+      mainTaskId: expect.any(String),
+      status: 'completed_successfully',
+      agentExecutionReports: {
+        sub1: { agentId: 'sub1', taskAssigned: "Subtask 1", status: 'completed', result: 'Result 1', agentName: 'TestAgent', agentType: 'GENERAL' },
+        sub2: { agentId: 'sub2', taskAssigned: "Subtask 2", status: 'completed', result: 'Result 2', agentName: 'TestAgent', agentType: 'GENERAL' },
+      },
+      completedAt: new Date().toISOString(),
+    });
   });
 
-  it("should handle invalid task status updates", async () => {
-    const createTaskResponse = await request(app)
-      .post("/tasks")
-      .send({ description: "Invalid status task" });
-    const taskId = createTaskResponse.body.taskId;
+  describe('POST /tasks', () => {
+    it('should create a new task and initiate processing', async () => {
+      const response = await request(app)
+        .post('/tasks')
+        .send({ description: 'Test new task' });
 
-    const updateResponse = await request(app)
-      .put(`/tasks/${taskId}/status`)
-      .send({ status: "invalid-status" });
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('taskId');
+      expect(response.body.description).toBe('Test new task');
+      expect(response.body.status).toBe('pending'); // Initial status before async processing starts
 
-    expect(updateResponse.statusCode).toBe(400);
+      // Allow async operations to proceed
+      await new Promise(resolve => setImmediate(resolve));
+
+
+      expect(decomposeTask).toHaveBeenCalledWith('Test new task'); //
+      expect(fs.writeFileSync).toHaveBeenCalledWith(expect.stringContaining('agents_'), expect.any(String), 'utf-8');
+      expect(executeWorkflow).toHaveBeenCalledWith(expect.stringContaining('agents_'), expect.stringContaining('output_'), expect.any(Function)); //
+    });
+
+    it('should return 400 if description is missing', async () => {
+      const response = await request(app)
+        .post('/tasks')
+        .send({});
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Task description is required');
+    });
   });
 
+  describe('GET /tasks', () => {
+    it('should return all tasks', async () => {
+      // First, create a task to ensure there's something to fetch
+      await request(app).post('/tasks').send({ description: 'Task for GET test' });
+      await new Promise(resolve => setImmediate(resolve)); // allow processing
+
+      const response = await request(app).get('/tasks');
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThanOrEqual(1);
+      expect(response.body.some(task => task.description === 'Task for GET test')).toBe(true);
+    });
+  });
+
+  describe('GET /tasks/:taskId', () => {
+    it('should return a specific task by ID', async () => {
+      const postResponse = await request(app).post('/tasks').send({ description: 'Specific task' });
+      const taskId = postResponse.body.taskId;
+      await new Promise(resolve => setImmediate(resolve));
+
+      const getResponse = await request(app).get(`/tasks/${taskId}`);
+      expect(getResponse.status).toBe(200);
+      expect(getResponse.body.taskId).toBe(taskId);
+      expect(getResponse.body.description).toBe('Specific task');
+    });
+
+    it('should return 404 if task not found', async () => {
+      const response = await request(app).get('/tasks/nonexistenttaskid');
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('GET /tasks/:taskId/agents', () => {
+    it('should return agent statuses for a task after processing starts', async () => {
+      const postResponse = await request(app).post('/tasks').send({ description: 'Task with agents' });
+      const taskId = postResponse.body.taskId;
+
+      // Wait for processAndEvaluateTask to run and populate agentStatusByTask
+      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for async ops
+
+      const agentResponse = await request(app).get(`/tasks/${taskId}/agents`);
+      expect(agentResponse.status).toBe(200);
+      expect(Array.isArray(agentResponse.body)).toBe(true);
+      // Based on mocked decomposeTask
+      expect(agentResponse.body.length).toBe(2);
+      expect(agentResponse.body[0].agentId).toBe('sub1');
+      expect(agentResponse.body[0].status).toBe('pending'); // Initial status from generateAgentDefinitionsForWorkflow
+    });
+
+     it('should return 404 if agents not found for the task', async () => {
+      const response = await request(app).get('/tasks/nonexistenttaskid/agents');
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('GET /system/stats', () => {
+    it('should return system statistics', async () => {
+      getCollectionStats.mockResolvedValueOnce({ //
+        tasks_collection: 5,
+        agent_executions_collection: 10,
+        knowledge_base_collection: 2,
+        agent_memory_collection: 3
+      });
+      const response = await request(app).get('/system/stats');
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        tasks_collection: 5,
+        agent_executions_collection: 10,
+        knowledge_base_collection: 2,
+        agent_memory_collection: 3
+      });
+      expect(getCollectionStats).toHaveBeenCalled(); //
+    });
+  });
+
+  describe('Error Handling in processAndEvaluateTask', () => {
+    it('should handle errors during task decomposition', async () => {
+      decomposeTask.mockRejectedValueOnce(new Error('Decomposition failed horribly')); //
+
+      const response = await request(app)
+        .post('/tasks')
+        .send({ description: 'Task that will fail decomposition' });
+      const taskId = response.body.taskId;
+
+      await new Promise(resolve => setTimeout(resolve, 50)); // Wait for async processing
+
+      const taskStatusResponse = await request(app).get(`/tasks/${taskId}`);
+      expect(taskStatusResponse.body.status).toBe('error');
+      expect(taskStatusResponse.body.result.error).toBe('Decomposition failed horribly');
+    });
+
+    it('should handle errors during workflow execution', async () => {
+      executeWorkflow.mockRejectedValueOnce(new Error('Workflow crashed')); //
+
+      const response = await request(app)
+        .post('/tasks')
+        .send({ description: 'Task that will fail workflow' });
+      const taskId = response.body.taskId;
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      const taskStatusResponse = await request(app).get(`/tasks/${taskId}`);
+      expect(taskStatusResponse.body.status).toBe('error');
+      expect(taskStatusResponse.body.result.error).toBe('Workflow crashed');
+    });
+  });
 });

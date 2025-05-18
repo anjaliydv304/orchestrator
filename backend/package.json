@@ -8,11 +8,18 @@
     "start": "node orchestrator.js",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest"
   },
+   "jest": {
+    "transform": {},
+    "testEnvironment": "node",
+    "injectGlobals": true
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.22.0",
+    "axios": "^1.9.0",
+    "chromadb": "^2.4.3",
     "compression": "^1.8.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
